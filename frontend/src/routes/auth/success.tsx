@@ -8,6 +8,20 @@ export const Route = createFileRoute("/auth/success")({
 // Extension ID - will need to be updated after loading extension
 const EXTENSION_ID = import.meta.env.VITE_EXTENSION_ID || "";
 
+// Chrome extension API types
+declare const chrome:
+  | {
+      runtime?: {
+        sendMessage?: (
+          extensionId: string,
+          message: unknown,
+          callback: (response: { success?: boolean }) => void,
+        ) => void;
+        lastError?: { message: string };
+      };
+    }
+  | undefined;
+
 function AuthSuccessPage() {
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     "loading",
@@ -28,19 +42,17 @@ function AuthSuccessPage() {
     localStorage.setItem("github-chat-token", token);
 
     // Try to send message to extension via chrome.runtime.sendMessage
-    if (
-      EXTENSION_ID &&
-      typeof chrome !== "undefined" &&
-      chrome.runtime?.sendMessage
-    ) {
-      chrome.runtime.sendMessage(
+    const chromeRuntime =
+      typeof chrome !== "undefined" ? chrome?.runtime : undefined;
+    if (EXTENSION_ID && chromeRuntime?.sendMessage) {
+      chromeRuntime.sendMessage(
         EXTENSION_ID,
         { type: "AUTH_SUCCESS", token },
         (response) => {
-          if (chrome.runtime.lastError) {
+          if (chromeRuntime.lastError) {
             console.log(
               "Could not send to extension:",
-              chrome.runtime.lastError.message,
+              chromeRuntime.lastError.message,
             );
             setStatus("success");
             setMessage(
