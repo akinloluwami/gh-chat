@@ -41,7 +41,7 @@ app.route("/auth", auth);
 app.route("/conversations", conversations);
 
 app.get("/", (c) => {
-  return c.json({ message: "GitHub Chat API", version: "1.0.0" });
+  return c.json({ message: "GH Chat API", version: "1.0.0" });
 });
 
 // Health check

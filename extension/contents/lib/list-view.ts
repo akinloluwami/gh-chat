@@ -192,7 +192,7 @@ export function generateListViewInnerHTML(chats: ChatPreview[]): string {
             <div class="github-chat-list-item${chat.unread ? " unread" : ""}" data-username="${chat.username}" data-conversation-id="${chat.conversationId}">
               <div class="github-chat-list-avatar-wrapper">
                 <img src="${chat.avatar}" alt="${chat.displayName}" class="github-chat-list-avatar" />
-                ${!chat.hasAccount ? '<span class="github-chat-not-on-platform-badge" title="Not on GitHub Chat yet">!</span>' : ""}
+                ${!chat.hasAccount ? '<span class="github-chat-not-on-platform-badge" title="Not on GH Chat yet">!</span>' : ""}
               </div>
               <div class="github-chat-list-content">
                 <div class="github-chat-list-header">

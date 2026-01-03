@@ -1,4 +1,4 @@
-/* GitHub Chat Button - Profile (under follow/sponsor) */
+/* GH Chat Button - Profile (under follow/sponsor) */
 .github-chat-btn-profile {
   display: flex;
   align-items: center;
@@ -41,7 +41,7 @@
   flex-shrink: 0;
 }
 
-/* GitHub Chat Button - Header Nav */
+/* GH Chat Button - Header Nav */
 .github-chat-header-btn {
   display: flex;
   align-items: center;

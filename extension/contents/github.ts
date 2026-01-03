@@ -449,4 +449,4 @@ new MutationObserver(() => {
   }
 }).observe(document, { subtree: true, childList: true })
 
-console.log("GitHub Chat content script loaded")
+console.log("GH Chat content script loaded")

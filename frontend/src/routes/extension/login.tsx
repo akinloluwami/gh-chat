@@ -28,7 +28,7 @@ function ExtensionLoginPage() {
               />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold mb-3">Welcome to GitHub Chat</h1>
+          <h1 className="text-3xl font-bold mb-3">Welcome to GH Chat</h1>
           <p className="text-gray-400 text-lg">
             Chat with developers directly from their GitHub profiles
           </p>
@@ -38,19 +38,19 @@ function ExtensionLoginPage() {
           <h2 className="text-lg font-semibold mb-4">Get started in seconds</h2>
           <ul className="space-y-3 text-gray-300">
             <li className="flex items-start gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-[#238636] rounded-full flex items-center justify-center text-sm font-medium">
+              <span className="shrink-0 w-6 h-6 bg-[#238636] rounded-full flex items-center justify-center text-sm font-medium">
                 1
               </span>
               <span>Sign in with your GitHub account</span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-[#238636] rounded-full flex items-center justify-center text-sm font-medium">
+              <span className="shrink-0 w-6 h-6 bg-[#238636] rounded-full flex items-center justify-center text-sm font-medium">
                 2
               </span>
               <span>Visit any GitHub profile</span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-[#238636] rounded-full flex items-center justify-center text-sm font-medium">
+              <span className="shrink-0 w-6 h-6 bg-[#238636] rounded-full flex items-center justify-center text-sm font-medium">
                 3
               </span>
               <span>Click the Chat button to start a conversation</span>

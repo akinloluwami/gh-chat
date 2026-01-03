@@ -28,7 +28,7 @@ function LoginPage() {
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold mb-2">GitHub Chat</h1>
+          <h1 className="text-2xl font-bold mb-2">GH Chat</h1>
           <p className="text-gray-400">
             Sign in with your GitHub account to start chatting with developers
           </p>

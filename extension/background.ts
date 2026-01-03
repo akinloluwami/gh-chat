@@ -65,4 +65,4 @@ chrome.runtime.onMessageExternal?.addListener(
   }
 )
 
-console.log("GitHub Chat background script loaded")
+console.log("GH Chat background script loaded")

@@ -205,7 +205,7 @@ export async function renderConversationViewInto(
       headerUserInfo.innerHTML = `
         <span class="github-chat-display-name">${escapeHtml(otherUser.display_name)}</span>
         <span class="github-chat-username">@${escapeHtml(otherUser.username)}</span>
-        <span class="github-chat-not-on-platform">Not on GitHub Chat yet</span>
+        <span class="github-chat-not-on-platform">Not on GH Chat yet</span>
       `
     }
   }
@@ -233,7 +233,7 @@ export async function renderConversationViewInto(
           <div class="github-chat-empty">
             <p>No messages yet</p>
             <p class="github-chat-empty-hint">Send a message to start the conversation!</p>
-            ${!otherUser.has_account ? '<p class="github-chat-empty-hint" style="margin-top: 8px; color: #f0883e;">@' + escapeHtml(username) + " will see your messages when they join GitHub Chat.</p>" : ""}
+            ${!otherUser.has_account ? '<p class="github-chat-empty-hint" style="margin-top: 8px; color: #f0883e;">@' + escapeHtml(username) + " will see your messages when they join GH Chat.</p>" : ""}
           </div>
         `
       } else {
