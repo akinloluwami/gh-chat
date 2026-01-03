@@ -9,17 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExtensionLoginRouteImport } from './routes/extension/login'
 import { Route as AuthSuccessRouteImport } from './routes/auth/success'
 import { Route as AuthErrorRouteImport } from './routes/auth/error'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -43,14 +37,12 @@ const AuthErrorRoute = AuthErrorRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
   '/auth/error': typeof AuthErrorRoute
   '/auth/success': typeof AuthSuccessRoute
   '/extension/login': typeof ExtensionLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
   '/auth/error': typeof AuthErrorRoute
   '/auth/success': typeof AuthSuccessRoute
   '/extension/login': typeof ExtensionLoginRoute
@@ -58,33 +50,20 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/login': typeof LoginRoute
   '/auth/error': typeof AuthErrorRoute
   '/auth/success': typeof AuthSuccessRoute
   '/extension/login': typeof ExtensionLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/login'
-    | '/auth/error'
-    | '/auth/success'
-    | '/extension/login'
+  fullPaths: '/' | '/auth/error' | '/auth/success' | '/extension/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/auth/error' | '/auth/success' | '/extension/login'
-  id:
-    | '__root__'
-    | '/'
-    | '/login'
-    | '/auth/error'
-    | '/auth/success'
-    | '/extension/login'
+  to: '/' | '/auth/error' | '/auth/success' | '/extension/login'
+  id: '__root__' | '/' | '/auth/error' | '/auth/success' | '/extension/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  LoginRoute: typeof LoginRoute
   AuthErrorRoute: typeof AuthErrorRoute
   AuthSuccessRoute: typeof AuthSuccessRoute
   ExtensionLoginRoute: typeof ExtensionLoginRoute
@@ -92,13 +71,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -132,7 +104,6 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  LoginRoute: LoginRoute,
   AuthErrorRoute: AuthErrorRoute,
   AuthSuccessRoute: AuthSuccessRoute,
   ExtensionLoginRoute: ExtensionLoginRoute,
