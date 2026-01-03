@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExtensionLoginRouteImport } from './routes/extension/login'
 import { Route as AuthSuccessRouteImport } from './routes/auth/success'
 import { Route as AuthErrorRouteImport } from './routes/auth/error'
 
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -37,12 +43,14 @@ const AuthErrorRoute = AuthErrorRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
   '/auth/error': typeof AuthErrorRoute
   '/auth/success': typeof AuthSuccessRoute
   '/extension/login': typeof ExtensionLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
   '/auth/error': typeof AuthErrorRoute
   '/auth/success': typeof AuthSuccessRoute
   '/extension/login': typeof ExtensionLoginRoute
@@ -50,20 +58,33 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/privacy': typeof PrivacyRoute
   '/auth/error': typeof AuthErrorRoute
   '/auth/success': typeof AuthSuccessRoute
   '/extension/login': typeof ExtensionLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth/error' | '/auth/success' | '/extension/login'
+  fullPaths:
+    | '/'
+    | '/privacy'
+    | '/auth/error'
+    | '/auth/success'
+    | '/extension/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth/error' | '/auth/success' | '/extension/login'
-  id: '__root__' | '/' | '/auth/error' | '/auth/success' | '/extension/login'
+  to: '/' | '/privacy' | '/auth/error' | '/auth/success' | '/extension/login'
+  id:
+    | '__root__'
+    | '/'
+    | '/privacy'
+    | '/auth/error'
+    | '/auth/success'
+    | '/extension/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PrivacyRoute: typeof PrivacyRoute
   AuthErrorRoute: typeof AuthErrorRoute
   AuthSuccessRoute: typeof AuthSuccessRoute
   ExtensionLoginRoute: typeof ExtensionLoginRoute
@@ -71,6 +92,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -104,6 +132,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PrivacyRoute: PrivacyRoute,
   AuthErrorRoute: AuthErrorRoute,
   AuthSuccessRoute: AuthSuccessRoute,
   ExtensionLoginRoute: ExtensionLoginRoute,

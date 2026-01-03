@@ -33,7 +33,8 @@
     "externally_connectable": {
       "matches": [
         "http://localhost:5173/*",
-        "https://localhost:5173/*"
+        "https://localhost:5173/*",
+        "https://ghchat.social/*"
       ]
     }
   }
