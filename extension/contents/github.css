@@ -104,10 +104,83 @@
     Helvetica, Arial, sans-serif;
   transition: right 0.3s ease;
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
 }
 
 .github-chat-drawer.open {
   right: 0;
+}
+
+/* View container for animations */
+.github-chat-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: var(--bgColor-default, #0d1117);
+}
+
+.github-chat-view.slide-in-right {
+  animation: slideInRight 0.25s ease forwards;
+}
+
+.github-chat-view.slide-out-right {
+  animation: slideOutRight 0.25s ease forwards;
+}
+
+.github-chat-view.slide-in-left {
+  animation: slideInLeft 0.25s ease forwards;
+}
+
+.github-chat-view.slide-out-left {
+  animation: slideOutLeft 0.25s ease forwards;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0.5;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-30%);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutLeft {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-30%);
+    opacity: 0.5;
+  }
 }
 
 /* Chat Header */

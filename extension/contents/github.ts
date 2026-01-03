@@ -37,6 +37,15 @@ let currentOtherUser: {
   avatar: string
 } | null = null
 
+// Message cache for instant loading
+const messageCache: Map<number, { messages: ApiMessage[]; timestamp: number }> =
+  new Map()
+const CACHE_TTL = 30000 // 30 seconds
+
+// Chat list cache for instant back navigation
+let chatListCache: { chats: ChatPreview[]; timestamp: number } | null = null
+const CHAT_LIST_CACHE_TTL = 10000 // 10 seconds
+
 // Status icons
 const STATUS_ICONS = {
   pending: `<svg viewBox="0 0 16 16" width="12" height="12"><path fill="currentColor" d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm7-3.25v2.992l2.028.812a.75.75 0 0 1-.557 1.392l-2.5-1A.751.751 0 0 1 7 8.25v-3.5a.75.75 0 0 1 1.5 0Z"/></svg>`,
@@ -151,10 +160,30 @@ function openLogin(): void {
   chrome.runtime.sendMessage({ type: "OPEN_LOGIN" })
 }
 
+// Prefetch messages for a conversation in the background
+async function prefetchMessages(conversationId: number): Promise<void> {
+  // Skip if already cached and not stale
+  const cached = messageCache.get(conversationId)
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) return
+
+  try {
+    const messages = await getMessages(conversationId)
+    messageCache.set(conversationId, { messages, timestamp: Date.now() })
+  } catch {
+    // Silently fail - we'll fetch again when opening
+  }
+}
+
 // Get all chats from API
 async function getAllChats(): Promise<ChatPreview[]> {
   const conversations = await getConversations()
-  return conversations.map((conv: Conversation) => ({
+
+  // Prefetch messages for recent conversations in background
+  conversations.slice(0, 5).forEach((conv) => {
+    prefetchMessages(conv.id)
+  })
+
+  const chats = conversations.map((conv: Conversation) => ({
     username: conv.other_username,
     displayName: conv.other_display_name || conv.other_username,
     avatar: conv.other_avatar_url,
@@ -166,6 +195,11 @@ async function getAllChats(): Promise<ChatPreview[]> {
     hasAccount: conv.other_has_account,
     conversationId: conv.id
   }))
+
+  // Update cache
+  chatListCache = { chats, timestamp: Date.now() }
+
+  return chats
 }
 
 // Close chat drawer completely
@@ -216,8 +250,16 @@ function goBackToList(): void {
   currentOtherUser = null
   currentView = "list"
 
-  // Re-render the list view
-  renderListView()
+  // Animate transition: slide conversation out, slide list in
+  if (chatDrawer) {
+    const currentViewEl = chatDrawer.querySelector(".github-chat-view")
+    if (currentViewEl) {
+      currentViewEl.classList.add("slide-out-right")
+    }
+
+    // Create and render list view with animation
+    renderListViewAnimated("slide-in-left")
+  }
 }
 
 // Format relative time
@@ -237,6 +279,13 @@ function formatRelativeTime(timestamp: number): string {
 
 // Open chat list drawer
 async function openChatListDrawer(): Promise<void> {
+  // Prefetch current user info for instant conversation loading
+  if (!currentUserId) {
+    getCurrentUserInfo().then((userInfo) => {
+      currentUserId = userInfo?.id || null
+    })
+  }
+
   // Create overlay if not exists
   if (!chatOverlay) {
     chatOverlay = document.createElement("div")
@@ -266,11 +315,51 @@ async function openChatListDrawer(): Promise<void> {
 async function renderListView(): Promise<void> {
   if (!chatDrawer) return
 
-  // Load all chats from API
+  // Load all chats from API (updates cache)
   const chats = await getAllChats()
 
   // Render drawer content
-  chatDrawer.innerHTML = `
+  chatDrawer.innerHTML = generateListViewHTML(chats)
+  setupListViewEventListeners(chats)
+}
+
+// Render list view with animation (uses cache for instant display)
+function renderListViewAnimated(animationClass: string): void {
+  if (!chatDrawer) return
+
+  // Use cached chats for instant rendering
+  const chats =
+    chatListCache && Date.now() - chatListCache.timestamp < CHAT_LIST_CACHE_TTL
+      ? chatListCache.chats
+      : []
+
+  // Create new view element with animation
+  const viewEl = document.createElement("div")
+  viewEl.className = `github-chat-view ${animationClass}`
+  viewEl.innerHTML = generateListViewInnerHTML(chats)
+
+  // Remove old view after animation
+  const oldView = chatDrawer.querySelector(".github-chat-view")
+  if (oldView) {
+    oldView.addEventListener(
+      "animationend",
+      () => {
+        oldView.remove()
+      },
+      { once: true }
+    )
+  }
+
+  chatDrawer.appendChild(viewEl)
+  setupListViewEventListeners(chats, viewEl)
+
+  // Refresh chats in background
+  getAllChats()
+}
+
+// Generate list view inner HTML (content only, no wrapper)
+function generateListViewInnerHTML(chats: ChatPreview[]): string {
+  return `
     <div class="github-chat-header">
       <div class="github-chat-user-info">
         <span class="github-chat-display-name">Messages</span>
@@ -314,24 +403,36 @@ async function renderListView(): Promise<void> {
       }
     </div>
   `
+}
 
-  // Add event listeners
-  const closeBtn = chatDrawer.querySelector(".github-chat-close")
+// Generate full list view HTML
+function generateListViewHTML(chats: ChatPreview[]): string {
+  return generateListViewInnerHTML(chats)
+}
+
+// Setup event listeners for list view
+function setupListViewEventListeners(
+  chats: ChatPreview[],
+  container?: Element
+): void {
+  const root = container || chatDrawer
+  if (!root) return
+
+  const closeBtn = root.querySelector(".github-chat-close")
   closeBtn?.addEventListener("click", closeChatDrawer)
 
-  // Add click handlers for chat items
-  const chatItems = chatDrawer.querySelectorAll(".github-chat-list-item")
+  const chatItems = root.querySelectorAll(".github-chat-list-item")
   chatItems.forEach((item) => {
     item.addEventListener("click", async () => {
       const username = item.getAttribute("data-username")
+      const conversationId = item.getAttribute("data-conversation-id")
       if (username) {
-        // Find the chat data
         const chat = chats.find((c: any) => c.username === username)
-        // Switch to conversation view (no closing, just transition)
-        renderConversationView(
+        renderConversationViewAnimated(
           username,
           chat?.displayName || username,
-          chat?.avatar || `https://github.com/${username}.png`
+          chat?.avatar || `https://github.com/${username}.png`,
+          conversationId ? parseInt(conversationId) : undefined
         )
       }
     })
@@ -344,23 +445,90 @@ function formatTime(timestamp: number): string {
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
 }
 
-// Render conversation view inside the drawer
-async function renderConversationView(
+// Render conversation view with slide animation
+async function renderConversationViewAnimated(
   username: string,
   displayName: string,
-  avatar: string
+  avatar: string,
+  existingConversationId?: number
 ): Promise<void> {
   if (!chatDrawer) return
 
+  // Animate current view out to the left
+  const currentViewEl = chatDrawer.querySelector(".github-chat-view")
+  if (currentViewEl) {
+    currentViewEl.classList.add("slide-out-left")
+    currentViewEl.addEventListener(
+      "animationend",
+      () => {
+        currentViewEl.remove()
+      },
+      { once: true }
+    )
+  }
+
+  // Create new view with animation
+  const viewEl = document.createElement("div")
+  viewEl.className = "github-chat-view slide-in-right"
+  chatDrawer.appendChild(viewEl)
+
+  // Render conversation into this view
+  await renderConversationViewInto(
+    viewEl,
+    username,
+    displayName,
+    avatar,
+    existingConversationId
+  )
+}
+
+// Render conversation view into a specific container
+async function renderConversationViewInto(
+  container: HTMLElement,
+  username: string,
+  displayName: string,
+  avatar: string,
+  existingConversationId?: number
+): Promise<void> {
   currentView = "conversation"
   currentOtherUser = { username, displayName, avatar }
 
-  // Get current user info (needed to identify sent messages)
-  const userInfo = await getCurrentUserInfo()
-  currentUserId = userInfo?.id || null
+  // Check if we have cached messages for instant display
+  const cached = existingConversationId
+    ? messageCache.get(existingConversationId)
+    : null
+  const hasCachedMessages = cached && cached.messages.length > 0
 
-  // Show loading state with back button
-  chatDrawer.innerHTML = `
+  // Build initial messages HTML (use currentUserId if already set, otherwise show loading)
+  const initialMessagesHtml =
+    hasCachedMessages && currentUserId
+      ? cached.messages
+          .map((msg: ApiMessage) => {
+            const isReceived = msg.sender_id !== currentUserId
+            const isSent = !isReceived
+
+            let statusIcon = ""
+            if (isSent) {
+              const statusClass = msg.read_at ? "read" : "sent"
+              statusIcon = `<span class="github-chat-status ${statusClass}">${msg.read_at ? STATUS_ICONS.read : STATUS_ICONS.sent}</span>`
+            }
+
+            return `
+            <div class="github-chat-message ${isReceived ? "received" : "sent"}" data-message-id="${msg.id}">
+              <div class="github-chat-bubble">${escapeHtml(msg.content)}</div>
+              <div class="github-chat-meta">
+                <span class="github-chat-time">${formatTime(new Date(msg.created_at).getTime())}</span>
+                ${statusIcon}
+              </div>
+            </div>
+          `
+          })
+          .join("")
+      : '<div class="github-chat-loading">Loading...</div>'
+
+  const canUseInstantly = hasCachedMessages && currentUserId
+
+  container.innerHTML = `
     <div class="github-chat-header">
       <button class="github-chat-back" aria-label="Back">
         <svg viewBox="0 0 16 16" width="16" height="16">
@@ -379,11 +547,11 @@ async function renderConversationView(
       </button>
     </div>
     <div class="github-chat-messages" id="github-chat-messages">
-      <div class="github-chat-loading">Loading...</div>
+      ${initialMessagesHtml}
     </div>
     <div class="github-chat-input-area">
-      <textarea class="github-chat-input" placeholder="Type a message..." rows="1" id="github-chat-input" disabled></textarea>
-      <button class="github-chat-send" id="github-chat-send" aria-label="Send" disabled>
+      <textarea class="github-chat-input" placeholder="Type a message..." rows="1" id="github-chat-input" ${canUseInstantly ? "" : "disabled"}></textarea>
+      <button class="github-chat-send" id="github-chat-send" aria-label="Send" ${canUseInstantly ? "" : "disabled"}>
         <svg viewBox="0 0 16 16" width="16" height="16">
           <path fill="currentColor" d="M.989 8 .064 2.68a1.342 1.342 0 0 1 1.85-1.462l13.402 5.744a1.13 1.13 0 0 1 0 2.076L1.913 14.782a1.343 1.343 0 0 1-1.85-1.463L.99 8Zm.603-5.288L2.38 7.25h4.87a.75.75 0 0 1 0 1.5H2.38l-.788 4.538L13.929 8Z"></path>
         </svg>
@@ -391,20 +559,32 @@ async function renderConversationView(
     </div>
   `
 
+  // Scroll to bottom if we have cached messages
+  const messagesContainer = container.querySelector("#github-chat-messages")
+  if (canUseInstantly && messagesContainer) {
+    messagesContainer.scrollTo(0, messagesContainer.scrollHeight)
+  }
+
+  // Get current user info if not already set
+  if (!currentUserId) {
+    const userInfo = await getCurrentUserInfo()
+    currentUserId = userInfo?.id || null
+  }
+
   // Add back and close button listeners immediately
-  const backBtn = chatDrawer.querySelector(".github-chat-back")
+  const backBtn = container.querySelector(".github-chat-back")
   backBtn?.addEventListener("click", goBackToList)
 
-  const closeBtn = chatDrawer.querySelector(".github-chat-close")
+  const closeBtn = container.querySelector(".github-chat-close")
   closeBtn?.addEventListener("click", closeChatDrawer)
 
   // Get or create conversation
   const result = await getOrCreateConversation(username)
 
   if (!result.conversation) {
-    const messagesContainer = chatDrawer.querySelector("#github-chat-messages")
-    if (messagesContainer) {
-      messagesContainer.innerHTML = `
+    const msgContainer = container.querySelector("#github-chat-messages")
+    if (msgContainer) {
+      msgContainer.innerHTML = `
         <div class="github-chat-error">
           <p>Failed to start conversation</p>
           <p class="github-chat-empty-hint">${result.error || "Please try again later"}</p>
@@ -421,7 +601,7 @@ async function renderConversationView(
 
   // Update header with "not on platform" indicator if needed
   if (!otherUser.has_account) {
-    const headerUserInfo = chatDrawer.querySelector(".github-chat-user-info")
+    const headerUserInfo = container.querySelector(".github-chat-user-info")
     if (headerUserInfo) {
       headerUserInfo.innerHTML = `
         <span class="github-chat-display-name">${escapeHtml(otherUser.display_name)}</span>
@@ -431,64 +611,75 @@ async function renderConversationView(
     }
   }
 
-  // Load messages
-  const messages = await getMessages(conversation.id)
-  const messagesContainer = chatDrawer.querySelector("#github-chat-messages")
-
   // Track unread message IDs (received messages that haven't been read)
   const unreadMessageIds: number[] = []
 
-  if (messagesContainer) {
-    if (messages.length === 0) {
-      messagesContainer.innerHTML = `
-        <div class="github-chat-empty">
-          <p>No messages yet</p>
-          <p class="github-chat-empty-hint">Send a message to start the conversation!</p>
-          ${!otherUser.has_account ? '<p class="github-chat-empty-hint" style="margin-top: 8px; color: #f0883e;">@' + escapeHtml(username) + " will see your messages when they join GitHub Chat.</p>" : ""}
-        </div>
-      `
-    } else {
-      // Use otherUserId to determine if message is sent or received
-      // If sender_id matches otherUser, it's received; otherwise it's sent by us
-      messagesContainer.innerHTML = messages
-        .map((msg: ApiMessage) => {
-          const isReceived = msg.sender_id === otherUserId
-          const isSent = !isReceived
+  // Only fetch and render messages if we didn't show cached ones instantly
+  if (!canUseInstantly) {
+    const messages = await getMessages(conversation.id)
+    messageCache.set(conversation.id, { messages, timestamp: Date.now() })
 
-          // Collect unread received messages
-          if (isReceived && !msg.read_at) {
-            unreadMessageIds.push(msg.id)
-          }
+    const msgContainer = container.querySelector("#github-chat-messages")
+    if (msgContainer) {
+      if (messages.length === 0) {
+        msgContainer.innerHTML = `
+          <div class="github-chat-empty">
+            <p>No messages yet</p>
+            <p class="github-chat-empty-hint">Send a message to start the conversation!</p>
+            ${!otherUser.has_account ? '<p class="github-chat-empty-hint" style="margin-top: 8px; color: #f0883e;">@' + escapeHtml(username) + " will see your messages when they join GitHub Chat.</p>" : ""}
+          </div>
+        `
+      } else {
+        msgContainer.innerHTML = messages
+          .map((msg: ApiMessage) => {
+            const isReceived = msg.sender_id === otherUserId
+            const isSent = !isReceived
 
-          // Determine status for sent messages
-          let statusIcon = ""
-          if (isSent) {
-            const statusClass = msg.read_at ? "read" : "sent"
-            statusIcon = `<span class="github-chat-status ${statusClass}">${msg.read_at ? STATUS_ICONS.read : STATUS_ICONS.sent}</span>`
-          }
+            if (isReceived && !msg.read_at) {
+              unreadMessageIds.push(msg.id)
+            }
 
-          return `
-            <div class="github-chat-message ${isReceived ? "received" : "sent"}" data-message-id="${msg.id}">
-              <div class="github-chat-bubble">${escapeHtml(msg.content)}</div>
-              <div class="github-chat-meta">
-                <span class="github-chat-time">${formatTime(new Date(msg.created_at).getTime())}</span>
-                ${statusIcon}
+            let statusIcon = ""
+            if (isSent) {
+              const statusClass = msg.read_at ? "read" : "sent"
+              statusIcon = `<span class="github-chat-status ${statusClass}">${msg.read_at ? STATUS_ICONS.read : STATUS_ICONS.sent}</span>`
+            }
+
+            return `
+              <div class="github-chat-message ${isReceived ? "received" : "sent"}" data-message-id="${msg.id}">
+                <div class="github-chat-bubble">${escapeHtml(msg.content)}</div>
+                <div class="github-chat-meta">
+                  <span class="github-chat-time">${formatTime(new Date(msg.created_at).getTime())}</span>
+                  ${statusIcon}
+                </div>
               </div>
-            </div>
-          `
-        })
-        .join("")
-
-      // Note: unreadMessageIds will be marked as read AFTER joinConversation below
+            `
+          })
+          .join("")
+      }
+      msgContainer.scrollTo(0, msgContainer.scrollHeight)
     }
-    messagesContainer.scrollTo(0, messagesContainer.scrollHeight)
+  } else {
+    // We used cached messages - collect unread IDs from cache
+    cached!.messages.forEach((msg: ApiMessage) => {
+      if (msg.sender_id === otherUserId && !msg.read_at) {
+        unreadMessageIds.push(msg.id)
+      }
+    })
+    // Refresh cache in background
+    getMessages(conversation.id).then((freshMessages) => {
+      messageCache.set(conversation.id, {
+        messages: freshMessages,
+        timestamp: Date.now()
+      })
+    })
   }
 
   // Enable input
-  const input = chatDrawer.querySelector(
+  const input = container.querySelector(
     "#github-chat-input"
   ) as HTMLTextAreaElement
-  const sendBtn = chatDrawer.querySelector(
+  const sendBtn = container.querySelector(
     "#github-chat-send"
   ) as HTMLButtonElement
 
@@ -541,7 +732,8 @@ async function renderConversationView(
     input?.focus()
 
     // Add message to UI immediately with pending status (optimistic update)
-    const emptyState = messagesContainer?.querySelector(".github-chat-empty")
+    const msgContainer = container.querySelector("#github-chat-messages")
+    const emptyState = msgContainer?.querySelector(".github-chat-empty")
     if (emptyState) emptyState.remove()
 
     const messageEl = document.createElement("div")
@@ -554,8 +746,8 @@ async function renderConversationView(
         <span class="github-chat-status pending">${STATUS_ICONS.pending}</span>
       </div>
     `
-    messagesContainer?.appendChild(messageEl)
-    messagesContainer?.scrollTo(0, messagesContainer.scrollHeight)
+    msgContainer?.appendChild(messageEl)
+    msgContainer?.scrollTo(0, msgContainer.scrollHeight)
 
     // Send to server
     const sentMessage = await apiSendMessage(currentConversationId, messageText)
@@ -571,6 +763,12 @@ async function renderConversationView(
         if (statusEl) {
           statusEl.className = "github-chat-status sent"
           statusEl.innerHTML = STATUS_ICONS.sent
+        }
+        // Update cache with sent message
+        const cached = messageCache.get(currentConversationId)
+        if (cached) {
+          cached.messages.push(sentMessage)
+          cached.timestamp = Date.now()
         }
       } else {
         // Failed - show error status
@@ -599,8 +797,9 @@ async function renderConversationView(
       </div>
       <span>${escapeHtml(username)} is typing...</span>
     `
-    messagesContainer?.appendChild(typingIndicatorEl)
-    messagesContainer?.scrollTo(0, messagesContainer.scrollHeight)
+    const msgContainer = container.querySelector("#github-chat-messages")
+    msgContainer?.appendChild(typingIndicatorEl)
+    msgContainer?.scrollTo(0, msgContainer.scrollHeight)
   }
 
   function hideTypingIndicator() {
@@ -614,15 +813,19 @@ async function renderConversationView(
   try {
     wsCleanup = await joinConversation(conversation.id, {
       onMessage: (newMessage: ApiMessage) => {
-        // If message is from the other user, it's a received message
-        // If it's from us (not the other user), skip as it's already added locally
         if (newMessage.sender_id !== otherUserId) return
 
-        // Hide typing indicator when message arrives
         hideTypingIndicator()
 
-        const emptyState =
-          messagesContainer?.querySelector(".github-chat-empty")
+        // Update cache with new message
+        const cached = messageCache.get(conversation.id)
+        if (cached) {
+          cached.messages.push(newMessage)
+          cached.timestamp = Date.now()
+        }
+
+        const msgContainer = container.querySelector("#github-chat-messages")
+        const emptyState = msgContainer?.querySelector(".github-chat-empty")
         if (emptyState) emptyState.remove()
 
         const messageEl = document.createElement("div")
@@ -634,8 +837,8 @@ async function renderConversationView(
             <span class="github-chat-time">${formatTime(new Date(newMessage.created_at).getTime())}</span>
           </div>
         `
-        messagesContainer?.appendChild(messageEl)
-        messagesContainer?.scrollTo(0, messagesContainer.scrollHeight)
+        msgContainer?.appendChild(messageEl)
+        msgContainer?.scrollTo(0, msgContainer.scrollHeight)
 
         // Mark as read immediately since drawer is open
         markMessagesAsRead([newMessage.id])
@@ -650,11 +853,8 @@ async function renderConversationView(
       },
 
       onMessagesRead: (messageIds: number[]) => {
-        // Update sent messages to show read status
         messageIds.forEach((id) => {
-          const msgEl = messagesContainer?.querySelector(
-            `[data-message-id="${id}"]`
-          )
+          const msgEl = container?.querySelector(`[data-message-id="${id}"]`)
           if (msgEl && msgEl.classList.contains("sent")) {
             const statusEl = msgEl.querySelector(".github-chat-status")
             if (statusEl) {
@@ -711,8 +911,11 @@ async function openChatDrawer(
     chatDrawer?.classList.add("open")
   })
 
-  // Then render conversation view
-  await renderConversationView(username, displayName, avatar)
+  // Create view container and render conversation into it
+  const viewEl = document.createElement("div")
+  viewEl.className = "github-chat-view"
+  chatDrawer.appendChild(viewEl)
+  await renderConversationViewInto(viewEl, username, displayName, avatar)
 }
 
 // Escape HTML to prevent XSS
