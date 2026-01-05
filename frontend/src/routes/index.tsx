@@ -30,6 +30,7 @@ function LandingPage() {
           href="https://chromewebstore.google.com/detail/lpccimcjmaaenlgckbafegoiekccejnj?utm_source=gh_chat_landing_page"
           onClick={handleInstallClick}
           className="inline-flex items-center gap-2 px-8 py-3 bg-[#238636] hover:bg-[#2ea043] text-white font-semibold rounded-2xl transition-colors text-lg"
+          target="_blank"
         >
           <svg
             role="img"
