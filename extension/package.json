@@ -1,7 +1,7 @@
 {
   "name": "github-chat",
   "displayName": "GH Chat",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Chat with GitHub developers directly from their profiles",
   "author": "",
   "scripts": {
