@@ -16,6 +16,7 @@ import {
 import { getCurrentUserInfo } from "./auth"
 import {
   chatDrawer,
+  chatListCache,
   currentConversationId,
   currentUserId,
   getNavigationCallbacks,
@@ -32,6 +33,19 @@ import {
 } from "./state"
 import { STATUS_ICONS } from "./types"
 import { escapeHtml, formatTime } from "./utils"
+
+// Helper to clear unread count in chat list cache when opening a conversation
+function clearUnreadInCache(conversationId: string): void {
+  if (!chatListCache) return
+
+  const chat = chatListCache.chats.find(
+    (c) => c.conversationId === conversationId
+  )
+  if (chat) {
+    chat.unread = false
+    chat.unreadCount = 0
+  }
+}
 
 // Render conversation view with slide animation
 export async function renderConversationViewAnimated(
@@ -83,6 +97,11 @@ export async function renderConversationViewInto(
 
   // Stop listening for global messages (list view listener)
   setGlobalMessageListener(null)
+
+  // Immediately clear unread count in chat list cache for this conversation
+  if (existingConversationId) {
+    clearUnreadInCache(existingConversationId)
+  }
 
   // Check if we have cached messages for instant display
   const cached = existingConversationId
