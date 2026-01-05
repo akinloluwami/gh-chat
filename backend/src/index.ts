@@ -6,6 +6,7 @@ import auth from "./routes/auth.js";
 import conversations from "./routes/conversations.js";
 import { createWebSocketServer } from "./websocket.js";
 import "dotenv/config";
+import type { Server } from "http";
 
 const app = new Hono();
 
@@ -65,12 +66,9 @@ async function main() {
   }
 
   const port = parseInt(process.env.PORT || "8585", 10);
-  const wsPort = parseInt(process.env.WS_PORT || "8586", 10);
 
-  // Start WebSocket server
-  createWebSocketServer(wsPort);
-
-  serve(
+  // Start HTTP server
+  const server = serve(
     {
       fetch: app.fetch,
       port,
@@ -78,7 +76,10 @@ async function main() {
     (info) => {
       console.log(`Server is running on http://localhost:${info.port}`);
     },
-  );
+  ) as Server;
+
+  // Attach WebSocket server to the same HTTP server
+  createWebSocketServer(server);
 }
 
 main();

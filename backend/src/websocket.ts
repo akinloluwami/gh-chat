@@ -1,5 +1,5 @@
 import { WebSocketServer, WebSocket } from "ws";
-import type { IncomingMessage } from "http";
+import type { IncomingMessage, Server } from "http";
 import { sql } from "./db/index.js";
 import {
   initRedis,
@@ -181,13 +181,13 @@ function isOriginAllowed(origin: string | undefined): boolean {
   return ALLOWED_WS_ORIGINS.includes(origin);
 }
 
-// Create WebSocket server
-export function createWebSocketServer(port: number) {
+// Create WebSocket server attached to HTTP server
+export function createWebSocketServer(server: Server) {
   // Initialize Redis pub/sub
   initRedis();
 
   const wss = new WebSocketServer({
-    port,
+    server,
     verifyClient: (info, callback) => {
       const origin = info.origin || info.req.headers.origin;
       if (isOriginAllowed(origin)) {
@@ -199,9 +199,7 @@ export function createWebSocketServer(port: number) {
     },
   });
 
-  console.log(
-    `WebSocket server ${SERVER_ID} running on ws://localhost:${port}`,
-  );
+  console.log(`WebSocket server ${SERVER_ID} attached to HTTP server`);
 
   // Heartbeat to detect dead connections
   const interval = setInterval(() => {
