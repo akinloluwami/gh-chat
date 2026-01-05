@@ -284,11 +284,22 @@ function injectHeaderChatButton(): void {
 }
 
 // Inject profile chat button
-function injectChatButton(): void {
+async function injectChatButton(): Promise<void> {
   const existingBtn = document.querySelector(".github-chat-btn-profile")
   if (existingBtn) existingBtn.remove()
   const existingWrapper = document.querySelector(".github-chat-btn-wrapper")
   if (existingWrapper) existingWrapper.remove()
+
+  // Don't show chat button on own profile
+  const profileUsername = getProfileUsername()
+  const currentUser = await getCurrentUserInfo()
+  if (
+    profileUsername &&
+    currentUser &&
+    profileUsername.toLowerCase() === currentUser.username.toLowerCase()
+  ) {
+    return
+  }
 
   const followForm =
     document.querySelector('form[action*="/follow"]') ||
@@ -374,11 +385,11 @@ async function updateUnreadBadge(): Promise<void> {
 }
 
 // Initialize for profile pages
-function initProfilePage(): void {
+async function initProfilePage(): Promise<void> {
   if (!isProfilePage()) return
   currentUsername = getProfileUsername()
   if (!currentUsername) return
-  injectChatButton()
+  await injectChatButton()
 }
 
 // Initialize header button
