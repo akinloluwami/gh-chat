@@ -418,7 +418,6 @@
 .github-chat-emoji-popover {
   position: absolute;
   bottom: calc(100% + 4px);
-  left: 0;
   background: var(--bgColor-default, #0d1117);
   border: 1px solid var(--borderColor-default, #3d444d);
   border-radius: 12px;
@@ -426,12 +425,21 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   z-index: 1000;
   animation: popoverFadeIn 0.15s ease;
+  /* Default: align to the left of the bubble */
+  left: 0;
+  right: auto;
 }
 
-/* Position popover on right side for received messages */
-.github-chat-message.received .github-chat-emoji-popover {
+/* For sent messages, align popover to the right edge of the bubble */
+.github-chat-message.sent .github-chat-emoji-popover {
   left: auto;
   right: 0;
+}
+
+/* For received messages, align popover to the left edge of the bubble */
+.github-chat-message.received .github-chat-emoji-popover {
+  left: 0;
+  right: auto;
 }
 
 @keyframes popoverFadeIn {
@@ -500,6 +508,7 @@
 }
 
 .github-chat-bubble {
+  position: relative;
   padding: 10px 14px;
   border-radius: 16px;
   font-size: 14px;
@@ -518,6 +527,72 @@
   color: var(--fgColor-default, #f0f6fc);
   border: 1px solid var(--borderColor-default, #3d444d);
   border-bottom-left-radius: 4px;
+}
+
+/* Message Reactions Display */
+.github-chat-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 0 4px;
+}
+
+.github-chat-message.sent .github-chat-reactions {
+  justify-content: flex-end;
+}
+
+.github-chat-message.received .github-chat-reactions {
+  justify-content: flex-start;
+}
+
+.github-chat-reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid #3d444d;
+  border-radius: 12px;
+  background: #161b22;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.github-chat-reaction:hover {
+  background: rgba(110, 118, 129, 0.4);
+  transform: scale(1.05);
+}
+
+.github-chat-reaction:active {
+  transform: scale(0.98);
+}
+
+.github-chat-reaction.user-reacted {
+  background: rgba(35, 134, 54, 0.2);
+  border-color: #238636;
+}
+
+.github-chat-reaction.user-reacted:hover {
+  background: rgba(35, 134, 54, 0.3);
+}
+
+.github-chat-reaction-emoji {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.github-chat-reaction-count {
+  font-size: 12px;
+  color: #9198a1;
+  font-weight: 500;
+}
+
+.github-chat-reaction.user-reacted .github-chat-reaction-count {
+  color: #238636;
 }
 
 .github-chat-time {
