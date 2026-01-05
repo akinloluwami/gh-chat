@@ -79,6 +79,18 @@ export async function initDb() {
     )
   `;
 
+  // Create message_reactions table (stores emoji reactions on messages)
+  await sql`
+    CREATE TABLE IF NOT EXISTS message_reactions (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      message_id UUID REFERENCES messages(id) ON DELETE CASCADE,
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      emoji VARCHAR(32) NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      UNIQUE(message_id, user_id, emoji)
+    )
+  `;
+
   // Create indexes for better query performance
   await sql`CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)`;
@@ -88,6 +100,8 @@ export async function initDb() {
   await sql`CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_messages_created ON messages(created_at)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_conversation_reads_user ON conversation_reads(user_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_message_reactions_message ON message_reactions(message_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_message_reactions_user ON message_reactions(user_id)`;
 
   console.log("Database tables initialized with UUID primary keys");
 }
