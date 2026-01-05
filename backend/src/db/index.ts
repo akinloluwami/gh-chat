@@ -64,9 +64,23 @@ export async function initDb() {
       conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
       sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
       content TEXT NOT NULL,
+      reply_to_id UUID REFERENCES messages(id) ON DELETE SET NULL,
       created_at TIMESTAMP DEFAULT NOW(),
       read_at TIMESTAMP
     )
+  `;
+
+  // Add reply_to_id column if it doesn't exist (for existing databases)
+  await sql`
+    DO $$ 
+    BEGIN 
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'messages' AND column_name = 'reply_to_id'
+      ) THEN 
+        ALTER TABLE messages ADD COLUMN reply_to_id UUID REFERENCES messages(id) ON DELETE SET NULL;
+      END IF;
+    END $$;
   `;
 
   // Create conversation_reads table (tracks when user last read each conversation)

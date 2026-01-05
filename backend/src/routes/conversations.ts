@@ -337,7 +337,7 @@ conversations.get("/:id/messages", async (c) => {
     // Use subquery to avoid timezone issues when passing Date objects back to PostgreSQL
     // This handles messages with the same timestamp correctly using (created_at, id) tuple comparison
     messages = await sql`
-      SELECT m.id, m.content, m.created_at, m.read_at, m.sender_id,
+      SELECT m.id, m.content, m.created_at, m.read_at, m.sender_id, m.reply_to_id,
              u.username as sender_username, u.display_name as sender_display_name, u.avatar_url as sender_avatar
       FROM messages m
       JOIN users u ON m.sender_id = u.id
@@ -348,7 +348,7 @@ conversations.get("/:id/messages", async (c) => {
     `;
   } else {
     messages = await sql`
-      SELECT m.id, m.content, m.created_at, m.read_at, m.sender_id,
+      SELECT m.id, m.content, m.created_at, m.read_at, m.sender_id, m.reply_to_id,
              u.username as sender_username, u.display_name as sender_display_name, u.avatar_url as sender_avatar
       FROM messages m
       JOIN users u ON m.sender_id = u.id
@@ -371,6 +371,31 @@ conversations.get("/:id/messages", async (c) => {
     `;
   }
 
+  // Fetch reply_to data for messages that are replies
+  const replyToIds = messages
+    .filter((m: any) => m.reply_to_id)
+    .map((m: any) => m.reply_to_id);
+  let replyToMessages: any[] = [];
+  if (replyToIds.length > 0) {
+    replyToMessages = await sql`
+      SELECT m.id, m.content, m.sender_id, u.username as sender_username
+      FROM messages m
+      JOIN users u ON m.sender_id = u.id
+      WHERE m.id = ANY(${replyToIds}::uuid[])
+    `;
+  }
+
+  // Create lookup map for reply_to messages
+  const replyToMap = new Map<string, any>();
+  for (const r of replyToMessages) {
+    replyToMap.set(r.id, {
+      id: r.id,
+      content: r.content,
+      sender_id: r.sender_id,
+      sender_username: r.sender_username,
+    });
+  }
+
   // Group reactions by message_id
   const reactionsByMessage = new Map<string, any[]>();
   for (const r of reactions) {
@@ -385,17 +410,18 @@ conversations.get("/:id/messages", async (c) => {
     });
   }
 
-  // Attach reactions to messages
-  const messagesWithReactions = messages.map((m: any) => ({
+  // Attach reactions and reply_to to messages
+  const messagesWithData = messages.map((m: any) => ({
     ...m,
     reactions: reactionsByMessage.get(m.id) || [],
+    reply_to: m.reply_to_id ? replyToMap.get(m.reply_to_id) || null : null,
   }));
 
   // Check if there are more messages before the oldest one we fetched
   const hasMore = messages.length === limit;
 
   // Reverse to get chronological order
-  return c.json({ messages: messagesWithReactions.reverse(), hasMore });
+  return c.json({ messages: messagesWithData.reverse(), hasMore });
 });
 
 // Send a message
@@ -404,6 +430,7 @@ conversations.post("/:id/messages", async (c) => {
   const conversationId = c.req.param("id");
   const body = await c.req.json();
   const content = body.content?.trim();
+  const replyToId = body.reply_to_id || null;
 
   if (!content || typeof content !== "string" || content.trim().length === 0) {
     return c.json({ error: "Message content is required" }, 400);
@@ -424,17 +451,28 @@ conversations.post("/:id/messages", async (c) => {
     return c.json({ error: "Conversation not found" }, 404);
   }
 
+  // If reply_to_id is provided, verify it exists in this conversation
+  if (replyToId) {
+    const replyCheck = await sql`
+      SELECT id FROM messages 
+      WHERE id = ${replyToId}::uuid AND conversation_id = ${conversationId}::uuid
+    `;
+    if (replyCheck.length === 0) {
+      return c.json({ error: "Reply message not found" }, 400);
+    }
+  }
+
   const conversation = convCheck[0];
   const otherUserId =
     conversation.user1_id === user.user_id
       ? conversation.user2_id
       : conversation.user1_id;
 
-  // Insert message
+  // Insert message with optional reply_to_id
   const newMessages = await sql`
-    INSERT INTO messages (conversation_id, sender_id, content)
-    VALUES (${conversationId}::uuid, ${user.user_id}, ${content})
-    RETURNING id, content, created_at, sender_id
+    INSERT INTO messages (conversation_id, sender_id, content, reply_to_id)
+    VALUES (${conversationId}::uuid, ${user.user_id}, ${content}, ${replyToId}::uuid)
+    RETURNING id, content, created_at, sender_id, reply_to_id
   `;
 
   // Update conversation updated_at
@@ -444,6 +482,25 @@ conversations.post("/:id/messages", async (c) => {
 
   const message = newMessages[0];
 
+  // If this is a reply, fetch the replied-to message content
+  let replyTo = null;
+  if (message.reply_to_id) {
+    const replyToMsg = await sql`
+      SELECT m.id, m.content, m.sender_id, u.username as sender_username
+      FROM messages m
+      JOIN users u ON m.sender_id = u.id
+      WHERE m.id = ${message.reply_to_id}::uuid
+    `;
+    if (replyToMsg.length > 0) {
+      replyTo = {
+        id: replyToMsg[0].id,
+        content: replyToMsg[0].content,
+        sender_id: replyToMsg[0].sender_id,
+        sender_username: replyToMsg[0].sender_username,
+      };
+    }
+  }
+
   const messageData = {
     id: message.id,
     content: message.content,
@@ -452,6 +509,8 @@ conversations.post("/:id/messages", async (c) => {
     sender_username: user.username,
     sender_display_name: user.display_name,
     sender_avatar: user.avatar_url,
+    reply_to_id: message.reply_to_id,
+    reply_to: replyTo,
   };
 
   // Broadcast to all WebSocket connections for this conversation

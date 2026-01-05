@@ -1185,3 +1185,132 @@
     transform: rotate(360deg);
   }
 }
+
+/* Options Menu */
+.github-chat-options-menu {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(1, 4, 9, 0.75);
+  min-width: 120px;
+  padding: 4px;
+  z-index: 10002;
+}
+
+.github-chat-options-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: #e6edf3;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.github-chat-options-item:hover {
+  background: #30363d;
+}
+
+.github-chat-options-item svg {
+  flex-shrink: 0;
+}
+
+/* Quote Preview Bar (above input) */
+.github-chat-quote-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #161b22;
+  border-top: 1px solid #30363d;
+  border-left: 3px solid #58a6ff;
+  margin: 0;
+}
+
+.github-chat-quote-preview-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.github-chat-quote-preview-sender {
+  font-size: 12px;
+  font-weight: 600;
+  color: #58a6ff;
+}
+
+.github-chat-quote-preview-text {
+  font-size: 12px;
+  color: #8b949e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.github-chat-quote-preview-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: none;
+  color: #8b949e;
+  cursor: pointer;
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.github-chat-quote-preview-close:hover {
+  background: #30363d;
+  color: #e6edf3;
+}
+
+/* Quoted Content in Message Bubble */
+.github-chat-quoted-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border-left: 2px solid #58a6ff;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.github-chat-message.sent .github-chat-quoted-content {
+  background: rgba(255, 255, 255, 0.1);
+  border-left-color: rgba(255, 255, 255, 0.5);
+}
+
+.github-chat-quoted-sender {
+  font-size: 11px;
+  font-weight: 600;
+  color: #58a6ff;
+}
+
+.github-chat-message.sent .github-chat-quoted-sender {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.github-chat-quoted-text {
+  font-size: 12px;
+  color: #8b949e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.github-chat-message.sent .github-chat-quoted-text {
+  color: rgba(255, 255, 255, 0.7);
+}

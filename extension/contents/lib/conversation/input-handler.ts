@@ -7,7 +7,9 @@ import {
 } from "~lib/api"
 
 import {
+  clearQuotedMessage,
   currentConversationId,
+  getQuotedMessage,
   incrementPendingMessageId,
   messageCache,
   setTypingTimeout,
@@ -17,6 +19,49 @@ import { STATUS_ICONS } from "../types"
 import { escapeHtml, formatTime } from "../utils"
 import { showEmojiPickerForInsert } from "./emoji-picker"
 import { MESSAGE_ACTION_ICONS } from "./message-html"
+
+// Show quote preview bar above input
+export function showQuotePreview(
+  content: string,
+  senderUsername: string
+): void {
+  const inputArea = document.querySelector(".github-chat-input-area")
+  if (!inputArea) return
+
+  // Remove existing preview if any
+  hideQuotePreview()
+
+  // Create preview bar
+  const preview = document.createElement("div")
+  preview.className = "github-chat-quote-preview"
+  preview.innerHTML = `
+    <div class="github-chat-quote-preview-content">
+      <span class="github-chat-quote-preview-sender">@${escapeHtml(senderUsername)}</span>
+      <span class="github-chat-quote-preview-text">${escapeHtml(content.length > 50 ? content.substring(0, 50) + "..." : content)}</span>
+    </div>
+    <button class="github-chat-quote-preview-close" aria-label="Cancel reply">
+      <svg viewBox="0 0 16 16" width="12" height="12">
+        <path fill="currentColor" d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path>
+      </svg>
+    </button>
+  `
+
+  // Insert before input area
+  inputArea.parentNode?.insertBefore(preview, inputArea)
+
+  // Setup close button
+  const closeBtn = preview.querySelector(".github-chat-quote-preview-close")
+  closeBtn?.addEventListener("click", () => {
+    clearQuotedMessage()
+    hideQuotePreview()
+  })
+}
+
+// Hide quote preview bar
+export function hideQuotePreview(): void {
+  const existing = document.querySelector(".github-chat-quote-preview")
+  existing?.remove()
+}
 
 // Setup input event handlers
 export function setupInputHandlers(
@@ -109,19 +154,37 @@ async function handleSendMessage(
   }
   sendStopTyping()
 
+  // Get quoted message if replying
+  const quotedMsg = getQuotedMessage()
+  const replyToId = quotedMsg?.id || undefined
+
   // Generate a temporary ID for the optimistic message
   const tempId = `pending-${incrementPendingMessageId()}`
 
-  // Clear input immediately for better UX
+  // Clear input and quote preview immediately for better UX
   const messageText = text
   input.value = ""
   input.style.height = "auto"
   input?.focus()
 
+  // Clear quote state and hide preview
+  if (quotedMsg) {
+    clearQuotedMessage()
+    hideQuotePreview()
+  }
+
   // Add message to UI immediately with pending status (optimistic update)
   const msgContainer = container.querySelector("#github-chat-messages")
   const emptyState = msgContainer?.querySelector(".github-chat-empty")
   if (emptyState) emptyState.remove()
+
+  // Build quoted content HTML if replying
+  const quotedContentHtml = quotedMsg
+    ? `<div class="github-chat-quoted-content">
+        <span class="github-chat-quoted-sender">@${escapeHtml(quotedMsg.senderUsername)}</span>
+        <span class="github-chat-quoted-text">${escapeHtml(quotedMsg.content.length > 50 ? quotedMsg.content.substring(0, 50) + "..." : quotedMsg.content)}</span>
+      </div>`
+    : ""
 
   const messageEl = document.createElement("div")
   messageEl.className = "github-chat-message sent"
@@ -137,7 +200,7 @@ async function handleSendMessage(
           ${MESSAGE_ACTION_ICONS.options}
         </button>
       </div>
-      <div class="github-chat-bubble">${escapeHtml(messageText)}</div>
+      <div class="github-chat-bubble">${quotedContentHtml}${escapeHtml(messageText)}</div>
     </div>
     <div class="github-chat-meta">
       <span class="github-chat-time">${formatTime(Date.now())}</span>
@@ -147,8 +210,12 @@ async function handleSendMessage(
   msgContainer?.appendChild(messageEl)
   msgContainer?.scrollTo(0, msgContainer.scrollHeight)
 
-  // Send to server
-  const sentMessage = await apiSendMessage(currentConversationId, messageText)
+  // Send to server (with replyToId if replying)
+  const sentMessage = await apiSendMessage(
+    currentConversationId,
+    messageText,
+    replyToId
+  )
 
   // Update the optimistic message with the result
   const pendingEl = document.getElementById(tempId)

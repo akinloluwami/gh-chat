@@ -51,6 +51,15 @@ export let chatListCache: { chats: ChatPreview[]; timestamp: number } | null =
   null
 export const CHAT_LIST_CACHE_TTL = 10000 // 10 seconds
 
+// Quote reply state
+export type QuotedMessage = {
+  id: string
+  content: string
+  senderUsername: string
+} | null
+
+export let quotedMessage: QuotedMessage = null
+
 // State setters
 export function setChatDrawer(el: HTMLElement | null) {
   chatDrawer = el
@@ -118,4 +127,17 @@ export function setChatListCache(
   cache: { chats: ChatPreview[]; timestamp: number } | null
 ) {
   chatListCache = cache
+}
+
+// Quote reply state management
+export function setQuotedMessage(message: QuotedMessage) {
+  quotedMessage = message
+}
+
+export function getQuotedMessage(): QuotedMessage {
+  return quotedMessage
+}
+
+export function clearQuotedMessage() {
+  quotedMessage = null
 }

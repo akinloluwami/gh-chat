@@ -36,7 +36,8 @@ export function buildInitialMessagesHTML(
         isSent,
         statusIcon,
         msg.reactions || [],
-        userId
+        userId,
+        msg.reply_to
       )
     })
     .join("")
@@ -92,7 +93,8 @@ export async function fetchAndRenderMessages(
             isSent,
             statusIcon,
             msg.reactions || [],
-            userId
+            userId,
+            msg.reply_to
           )
         })
         .join("")

@@ -21,6 +21,7 @@ export {
 export {
   generateMessageHTML,
   generateReactionsHTML,
+  generateQuotedContentHTML,
   groupReactions,
   MESSAGE_ACTION_ICONS
 } from "./message-html"
@@ -57,7 +58,11 @@ export {
 } from "./emoji-picker"
 
 // Input handling
-export { setupInputHandlers } from "./input-handler"
+export {
+  setupInputHandlers,
+  showQuotePreview,
+  hideQuotePreview
+} from "./input-handler"
 
 // WebSocket handling
 export { setupWebSocketHandler } from "./websocket-handler"
@@ -66,4 +71,4 @@ export { setupWebSocketHandler } from "./websocket-handler"
 export { setupInfiniteScroll } from "./scroll-handler"
 
 // Action handling
-export { setupMessageActionHandlers } from "./action-handler"
+export { setupMessageActionHandlers, closeOptionsMenu } from "./action-handler"

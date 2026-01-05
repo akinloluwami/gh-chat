@@ -113,6 +113,13 @@ export interface Reaction {
   username: string
 }
 
+export interface ReplyTo {
+  id: string
+  content: string
+  sender_id: string
+  sender_username: string
+}
+
 export interface Message {
   id: string
   content: string
@@ -123,6 +130,8 @@ export interface Message {
   sender_display_name: string
   sender_avatar: string
   reactions?: Reaction[]
+  reply_to_id?: string
+  reply_to?: ReplyTo | null
 }
 
 export interface OtherUser {
@@ -239,14 +248,20 @@ export async function getMessages(
 // Send a message
 export async function sendMessage(
   conversationId: string,
-  content: string
+  content: string,
+  replyToId?: string
 ): Promise<Message | null> {
   try {
+    const body: { content: string; reply_to_id?: string } = { content }
+    if (replyToId) {
+      body.reply_to_id = replyToId
+    }
+
     const response = await fetchWithAuth(
       `/conversations/${conversationId}/messages`,
       {
         method: "POST",
-        body: JSON.stringify({ content })
+        body: JSON.stringify(body)
       }
     )
 

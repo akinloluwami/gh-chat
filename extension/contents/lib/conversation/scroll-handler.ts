@@ -73,7 +73,8 @@ export function setupInfiniteScroll(
               isSent,
               statusIcon,
               msg.reactions || [],
-              currentUserId
+              currentUserId,
+              msg.reply_to
             )
           })
           .join("")
