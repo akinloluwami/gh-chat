@@ -22,6 +22,7 @@ import {
   chatListCache,
   currentConversationId,
   currentUserId,
+  currentUsername,
   getNavigationCallbacks,
   incrementPendingMessageId,
   messageCache,
@@ -29,6 +30,7 @@ import {
   setCurrentConversationId,
   setCurrentOtherUser,
   setCurrentUserId,
+  setCurrentUsername,
   setCurrentView,
   setTypingTimeout,
   setWsCleanup,
@@ -94,6 +96,58 @@ function closeEmojiPopover(): void {
   }
 }
 
+// Handle reaction with optimistic UI update
+async function handleReactionOptimistic(
+  conversationId: string,
+  messageId: string,
+  emoji: string,
+  isAdding: boolean,
+  userId: string | null,
+  username: string
+): Promise<void> {
+  // Optimistically update the UI immediately
+  updateReactionInDOM(
+    messageId,
+    emoji,
+    userId || "",
+    username,
+    isAdding,
+    userId
+  )
+
+  // Make the API call in the background
+  try {
+    let success: boolean
+    if (isAdding) {
+      success = await addReaction(conversationId, messageId, emoji)
+    } else {
+      success = await removeReaction(conversationId, messageId, emoji)
+    }
+
+    // If the API call failed, roll back the optimistic update
+    if (!success) {
+      updateReactionInDOM(
+        messageId,
+        emoji,
+        userId || "",
+        username,
+        !isAdding, // Reverse the action
+        userId
+      )
+    }
+  } catch (error) {
+    // On error, roll back the optimistic update
+    updateReactionInDOM(
+      messageId,
+      emoji,
+      userId || "",
+      username,
+      !isAdding, // Reverse the action
+      userId
+    )
+  }
+}
+
 // Show emoji popover for a message
 function showEmojiPopover(reactionBtn: HTMLElement, messageId: string): void {
   // Close any existing popover
@@ -115,7 +169,13 @@ function showEmojiPopover(reactionBtn: HTMLElement, messageId: string): void {
     btn.addEventListener("click", async (e) => {
       e.stopPropagation()
       const emoji = (btn as HTMLElement).dataset.emoji
-      if (!emoji || !currentConversationId) return
+      if (
+        !emoji ||
+        !currentConversationId ||
+        !currentUserId ||
+        !currentUsername
+      )
+        return
 
       closeEmojiPopover()
 
@@ -127,13 +187,15 @@ function showEmojiPopover(reactionBtn: HTMLElement, messageId: string): void {
         `.github-chat-reaction[data-emoji="${emoji}"][data-user-reacted="true"]`
       )
 
-      if (existingReaction) {
-        // Remove reaction
-        await removeReaction(currentConversationId, messageId, emoji)
-      } else {
-        // Add reaction
-        await addReaction(currentConversationId, messageId, emoji)
-      }
+      // Use optimistic update (isAdding = true if no existing reaction)
+      await handleReactionOptimistic(
+        currentConversationId,
+        messageId,
+        emoji,
+        !existingReaction,
+        currentUserId,
+        currentUsername
+      )
     })
   })
 
@@ -593,10 +655,13 @@ export async function renderConversationViewInto(
 
   // Get current user info if not already set
   let userId = currentUserId
-  if (!userId) {
+  let myUsername = currentUsername
+  if (!userId || !myUsername) {
     const userInfo = await getCurrentUserInfo()
     userId = userInfo?.id || null
+    myUsername = userInfo?.username || null
     setCurrentUserId(userId)
+    setCurrentUsername(myUsername)
   }
 
   // Add back and close button listeners immediately
@@ -846,13 +911,24 @@ export async function renderConversationViewInto(
       const messageId = messageEl?.dataset.messageId
       const userReacted = reactionBtn.dataset.userReacted === "true"
 
-      if (!emoji || !messageId || !currentConversationId) return
+      if (
+        !emoji ||
+        !messageId ||
+        !currentConversationId ||
+        !currentUserId ||
+        !currentUsername
+      )
+        return
 
-      if (userReacted) {
-        removeReaction(currentConversationId, messageId, emoji)
-      } else {
-        addReaction(currentConversationId, messageId, emoji)
-      }
+      // Use optimistic update
+      handleReactionOptimistic(
+        currentConversationId,
+        messageId,
+        emoji,
+        !userReacted,
+        currentUserId,
+        currentUsername
+      )
       return
     }
 
