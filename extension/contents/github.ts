@@ -1,30 +1,22 @@
 import type { PlasmoCSConfig } from "plasmo"
 
-import {
-  ensureWebSocketConnected,
-  getTotalUnreadCount,
-  sendStopTyping
-} from "~lib/api"
+import { ensureWebSocketConnected, sendStopTyping } from "~lib/api"
 
 import "./github.css"
 
 // Import from modular files
-import { checkAuth, getCurrentUserInfo, openLogin } from "./lib/auth"
+import { checkAuth, getCurrentUserInfo } from "./lib/auth"
+import {
+  injectChatButton,
+  injectHeaderChatButton,
+  updateUnreadBadge
+} from "./lib/buttons"
 import {
   cancelPendingRead,
   renderConversationViewInto
-} from "./lib/conversation-view"
-import {
-  renderListView,
-  renderListViewAnimated,
-  startListMessageListener
-} from "./lib/list-view"
-import {
-  getProfileAvatar,
-  getProfileDisplayName,
-  getProfileUsername,
-  isProfilePage
-} from "./lib/profile"
+} from "./lib/conversation"
+import { renderListView, renderListViewAnimated, startListMessageListener } from "./lib/list"
+import { getProfileUsername, isProfilePage } from "./lib/profile"
 import {
   chatDrawer,
   chatOverlay,
@@ -175,6 +167,7 @@ async function openChatDrawer(
   // Check if authenticated first
   const isAuth = await checkAuth()
   if (!isAuth) {
+    const { openLogin } = await import("./lib/auth")
     openLogin()
     return
   }
@@ -220,186 +213,7 @@ setNavigationCallbacks({
   refreshUnreadBadge: updateUnreadBadge
 })
 
-// ============= UI Injection =============
-
-// Handle chat button click
-async function handleChatClick(): Promise<void> {
-  const isAuth = await checkAuth()
-  if (!isAuth) {
-    openLogin()
-    return
-  }
-
-  const username = getProfileUsername()
-  const displayName = getProfileDisplayName()
-  const avatar = getProfileAvatar()
-
-  if (username) {
-    openChatDrawer(username, displayName, avatar)
-  }
-}
-
-// Create the profile chat button
-function createChatButton(): HTMLButtonElement {
-  const button = document.createElement("button")
-  button.className = "github-chat-btn-profile btn btn-block"
-  button.type = "button"
-  button.innerHTML = `
-    <svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" class="octicon">
-      <path fill-rule="evenodd" d="M1.5 2.75a.25.25 0 01.25-.25h12.5a.25.25 0 01.25.25v8.5a.25.25 0 01-.25.25h-6.5a.75.75 0 00-.53.22L4.5 14.44v-2.19a.75.75 0 00-.75-.75h-2a.25.25 0 01-.25-.25v-8.5zM1.75 1A1.75 1.75 0 000 2.75v8.5C0 12.216.784 13 1.75 13H3v1.543a1.457 1.457 0 002.487 1.03L8.061 13h6.189A1.75 1.75 0 0016 11.25v-8.5A1.75 1.75 0 0014.25 1H1.75z"/>
-    </svg>
-    <span>Chat</span>
-  `
-  button.addEventListener("click", handleChatClick)
-  return button
-}
-
-// Create header chat button
-function createHeaderChatButton(): HTMLButtonElement {
-  const button = document.createElement("button")
-  button.className =
-    "github-chat-header-btn Button Button--iconOnly Button--secondary Button--medium AppHeader-button color-fg-muted"
-  button.title = "My Chats"
-  button.type = "button"
-  button.setAttribute("aria-label", "My Chats")
-  button.innerHTML = `
-    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" class="octicon octicon-comment-discussion">
-      <path d="M1.75 1h8.5c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 10.25 10H7.061l-2.574 2.573A1.458 1.458 0 0 1 2 11.543V10h-.25A1.75 1.75 0 0 1 0 8.25v-5.5C0 1.784.784 1 1.75 1ZM1.5 2.75v5.5c0 .138.112.25.25.25h1a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h3.5a.25.25 0 0 0 .25-.25v-5.5a.25.25 0 0 0-.25-.25h-8.5a.25.25 0 0 0-.25.25Zm13 2a.25.25 0 0 0-.25-.25h-.5a.75.75 0 0 1 0-1.5h.5c.966 0 1.75.784 1.75 1.75v5.5A1.75 1.75 0 0 1 14.25 12H14v1.543a1.458 1.458 0 0 1-2.487 1.03L9.22 12.28a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l2.22 2.22v-2.19a.75.75 0 0 1 .75-.75h1a.25.25 0 0 0 .25-.25Z"></path>
-    </svg>
-    <span class="github-chat-unread-badge" style="display: none;"></span>
-  `
-  button.addEventListener("click", async () => {
-    const isAuth = await checkAuth()
-    if (!isAuth) {
-      openLogin()
-      return
-    }
-    openChatListDrawer()
-  })
-  return button
-}
-
-// Inject header chat button
-function injectHeaderChatButton(): void {
-  if (document.querySelector(".github-chat-header-btn")) return
-
-  const targetContainer = document.querySelector(".AppHeader-actions")
-  if (targetContainer) {
-    const chatBtn = createHeaderChatButton()
-    targetContainer.insertBefore(chatBtn, targetContainer.firstChild)
-    return
-  }
-
-  const globalBarEnd = document.querySelector(".AppHeader-globalBar-end")
-  if (globalBarEnd) {
-    const actionsDiv = globalBarEnd.querySelector(".AppHeader-actions")
-    if (actionsDiv) {
-      const chatBtn = createHeaderChatButton()
-      actionsDiv.insertBefore(chatBtn, actionsDiv.firstChild)
-    }
-  }
-}
-
-// Inject profile chat button
-async function injectChatButton(): Promise<void> {
-  const existingBtn = document.querySelector(".github-chat-btn-profile")
-  if (existingBtn) existingBtn.remove()
-  const existingWrapper = document.querySelector(".github-chat-btn-wrapper")
-  if (existingWrapper) existingWrapper.remove()
-
-  // Don't show chat button on own profile
-  const profileUsername = getProfileUsername()
-  const currentUser = await getCurrentUserInfo()
-  if (
-    profileUsername &&
-    currentUser &&
-    profileUsername.toLowerCase() === currentUser.username.toLowerCase()
-  ) {
-    return
-  }
-
-  const followForm =
-    document.querySelector('form[action*="/follow"]') ||
-    document.querySelector('[data-target="follow.form"]')
-  const sponsorLink = document.querySelector('a[href*="/sponsors/"]')
-
-  let buttonRow: Element | null = null
-  if (followForm) {
-    buttonRow =
-      followForm.closest(".d-flex") ||
-      followForm.closest('[class*="flex"]') ||
-      followForm.parentElement
-  } else if (sponsorLink) {
-    buttonRow = sponsorLink.closest(".d-flex") || sponsorLink.parentElement
-  }
-
-  if (buttonRow) {
-    const wrapper = document.createElement("div")
-    wrapper.className = "github-chat-btn-wrapper"
-    wrapper.style.width = "100%"
-    wrapper.style.marginTop = "-4px"
-    wrapper.style.marginBottom = "8px"
-
-    const chatBtn = createChatButton()
-    wrapper.appendChild(chatBtn)
-    buttonRow.insertAdjacentElement("afterend", wrapper)
-    return
-  }
-
-  const vcardNames = document.querySelector(".vcard-names")
-  if (vcardNames) {
-    const wrapper = document.createElement("div")
-    wrapper.className = "github-chat-btn-wrapper"
-    wrapper.style.width = "100%"
-    wrapper.style.marginTop = "16px"
-
-    const chatBtn = createChatButton()
-    wrapper.appendChild(chatBtn)
-    vcardNames.insertAdjacentElement("afterend", wrapper)
-    return
-  }
-
-  const vcard =
-    document.querySelector(".h-card") ||
-    document.querySelector('[itemtype="http://schema.org/Person"]')
-  if (vcard) {
-    const wrapper = document.createElement("div")
-    wrapper.className = "github-chat-btn-wrapper"
-    wrapper.style.width = "100%"
-    wrapper.style.marginTop = "8px"
-
-    const chatBtn = createChatButton()
-    wrapper.appendChild(chatBtn)
-    vcard.appendChild(wrapper)
-  }
-}
-
 // ============= Initialization =============
-
-// Update unread badge on header button
-async function updateUnreadBadge(): Promise<void> {
-  const badge = document.querySelector(".github-chat-unread-badge")
-  if (!badge) return
-
-  // Only fetch if authenticated
-  const isAuth = await checkAuth()
-  if (!isAuth) {
-    ;(badge as HTMLElement).style.display = "none"
-    return
-  }
-
-  try {
-    const unreadCount = await getTotalUnreadCount()
-    if (unreadCount > 0) {
-      badge.textContent = unreadCount > 99 ? "99+" : String(unreadCount)
-      ;(badge as HTMLElement).style.display = "flex"
-    } else {
-      ;(badge as HTMLElement).style.display = "none"
-    }
-  } catch {
-    ;(badge as HTMLElement).style.display = "none"
-  }
-}
 
 // Initialize for profile pages
 async function initProfilePage(): Promise<void> {
@@ -423,13 +237,6 @@ function startUnreadPolling(): void {
   if (unreadPollInterval) return
   // Poll every 30 seconds for new messages
   unreadPollInterval = setInterval(updateUnreadBadge, 30000)
-}
-
-function stopUnreadPolling(): void {
-  if (unreadPollInterval) {
-    clearInterval(unreadPollInterval)
-    unreadPollInterval = null
-  }
 }
 
 // Listen for auth success messages from frontend
