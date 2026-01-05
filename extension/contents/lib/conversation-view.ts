@@ -1,16 +1,19 @@
 // Conversation view rendering and message handling
 
 import {
+  addReaction,
   sendMessage as apiSendMessage,
   getMessages,
   getOrCreateConversation,
   joinConversation,
   markConversationAsRead,
   markMessagesAsRead,
+  removeReaction,
   sendStopTyping,
   sendTypingIndicator,
   setGlobalMessageListener,
-  type Message as ApiMessage
+  type Message as ApiMessage,
+  type Reaction
 } from "~lib/api"
 
 import { getCurrentUserInfo } from "./auth"
@@ -98,21 +101,39 @@ function showEmojiPopover(reactionBtn: HTMLElement, messageId: string): void {
 
   const popover = createEmojiPopover(messageId)
 
-  // Position relative to the message wrapper
-  const wrapperEl = reactionBtn.closest(".github-chat-message-wrapper")
-  if (!wrapperEl) return
+  // Position relative to the bubble for consistent placement
+  const bubbleEl = reactionBtn
+    .closest(".github-chat-message-wrapper")
+    ?.querySelector(".github-chat-bubble")
+  if (!bubbleEl) return
 
-  wrapperEl.appendChild(popover)
+  bubbleEl.appendChild(popover)
   currentEmojiPopover = popover
 
   // Add click handlers for emoji buttons
   popover.querySelectorAll(".github-chat-emoji-btn").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
+    btn.addEventListener("click", async (e) => {
       e.stopPropagation()
       const emoji = (btn as HTMLElement).dataset.emoji
-      console.log("Emoji selected:", emoji, "for message:", messageId)
-      // TODO: Send reaction to server
+      if (!emoji || !currentConversationId) return
+
       closeEmojiPopover()
+
+      // Check if user already reacted with this emoji
+      const messageEl = document.querySelector(
+        `.github-chat-message[data-message-id="${messageId}"]`
+      )
+      const existingReaction = messageEl?.querySelector(
+        `.github-chat-reaction[data-emoji="${emoji}"][data-user-reacted="true"]`
+      )
+
+      if (existingReaction) {
+        // Remove reaction
+        await removeReaction(currentConversationId, messageId, emoji)
+      } else {
+        // Add reaction
+        await addReaction(currentConversationId, messageId, emoji)
+      }
     })
   })
 
@@ -140,18 +161,69 @@ function handleOutsideClick(e: MouseEvent): void {
   }
 }
 
+// Group reactions by emoji for display
+function groupReactions(
+  reactions: Reaction[],
+  currentUserId: string | null
+): Map<string, { count: number; userReacted: boolean; usernames: string[] }> {
+  const grouped = new Map<
+    string,
+    { count: number; userReacted: boolean; usernames: string[] }
+  >()
+  for (const r of reactions) {
+    if (!grouped.has(r.emoji)) {
+      grouped.set(r.emoji, { count: 0, userReacted: false, usernames: [] })
+    }
+    const group = grouped.get(r.emoji)!
+    group.count++
+    group.usernames.push(r.username)
+    if (r.user_id === currentUserId) {
+      group.userReacted = true
+    }
+  }
+  return grouped
+}
+
+// Generate reactions HTML
+function generateReactionsHTML(
+  reactions: Reaction[],
+  currentUserIdVal: string | null
+): string {
+  if (!reactions || reactions.length === 0) return ""
+
+  const grouped = groupReactions(reactions, currentUserIdVal)
+  const reactionButtons: string[] = []
+
+  grouped.forEach((data, emoji) => {
+    const userReactedClass = data.userReacted ? "user-reacted" : ""
+    const title = data.usernames.join(", ")
+    reactionButtons.push(
+      `<button class="github-chat-reaction ${userReactedClass}" data-emoji="${emoji}" data-user-reacted="${data.userReacted}" title="${escapeHtml(title)}">
+        <span class="github-chat-reaction-emoji">${emoji}</span>
+        <span class="github-chat-reaction-count">${data.count}</span>
+      </button>`
+    )
+  })
+
+  return `<div class="github-chat-reactions">${reactionButtons.join("")}</div>`
+}
+
 // Generate message HTML with actions
 function generateMessageHTML(
   messageId: string,
   content: string,
   timestamp: number | string,
   isSent: boolean,
-  statusIcon: string = ""
+  statusIcon: string = "",
+  reactions: Reaction[] = [],
+  currentUserIdVal: string | null = null
 ): string {
   const timeStr =
     typeof timestamp === "string"
       ? formatTime(new Date(timestamp).getTime())
       : formatTime(timestamp)
+
+  const reactionsHTML = generateReactionsHTML(reactions, currentUserIdVal)
 
   return `
     <div class="github-chat-message ${isSent ? "sent" : "received"}" data-message-id="${messageId}">
@@ -166,12 +238,170 @@ function generateMessageHTML(
         </div>
         <div class="github-chat-bubble">${escapeHtml(content)}</div>
       </div>
+      ${reactionsHTML}
       <div class="github-chat-meta">
         <span class="github-chat-time">${timeStr}</span>
         ${statusIcon}
       </div>
     </div>
   `
+}
+
+// Update reaction in DOM for real-time updates
+function updateReactionInDOM(
+  messageId: string,
+  emoji: string,
+  reactionUserId: string,
+  reactionUsername: string,
+  isAdding: boolean,
+  currentUserIdVal: string | null
+): void {
+  const messageEl = document.querySelector(
+    `.github-chat-message[data-message-id="${messageId}"]`
+  )
+  if (!messageEl) return
+
+  // De-duplicate: Check cache first to see if this reaction already exists
+  if (currentConversationId) {
+    const cachedData = messageCache.get(currentConversationId)
+    if (cachedData) {
+      const msg = cachedData.messages.find((m) => m.id === messageId)
+      if (msg && msg.reactions) {
+        const existingReaction = msg.reactions.find(
+          (r) => r.emoji === emoji && r.user_id === reactionUserId
+        )
+        if (isAdding && existingReaction) {
+          // Reaction already exists in cache, skip duplicate event
+          return
+        }
+        if (!isAdding && !existingReaction) {
+          // Reaction doesn't exist in cache, skip duplicate removal event
+          return
+        }
+      }
+    }
+  }
+
+  let reactionsContainer = messageEl.querySelector(".github-chat-reactions")
+
+  if (isAdding) {
+    // Adding a reaction
+    if (!reactionsContainer) {
+      // Create reactions container if it doesn't exist
+      reactionsContainer = document.createElement("div")
+      reactionsContainer.className = "github-chat-reactions"
+      const metaEl = messageEl.querySelector(".github-chat-meta")
+      if (metaEl) {
+        messageEl.insertBefore(reactionsContainer, metaEl)
+      } else {
+        messageEl.appendChild(reactionsContainer)
+      }
+    }
+
+    // Check if this emoji already exists
+    let reactionBtn = reactionsContainer.querySelector(
+      `.github-chat-reaction[data-emoji="${emoji}"]`
+    ) as HTMLElement
+
+    if (reactionBtn) {
+      // Update existing reaction count
+      const countEl = reactionBtn.querySelector(".github-chat-reaction-count")
+      const currentCount = parseInt(countEl?.textContent || "0")
+      if (countEl) countEl.textContent = (currentCount + 1).toString()
+
+      // Update title
+      const currentTitle = reactionBtn.getAttribute("title") || ""
+      reactionBtn.setAttribute(
+        "title",
+        currentTitle ? `${currentTitle}, ${reactionUsername}` : reactionUsername
+      )
+
+      // Mark as user-reacted if this is current user
+      if (reactionUserId === currentUserIdVal) {
+        reactionBtn.classList.add("user-reacted")
+        reactionBtn.setAttribute("data-user-reacted", "true")
+      }
+    } else {
+      // Create new reaction button
+      const isUserReacted = reactionUserId === currentUserIdVal
+      reactionBtn = document.createElement("button")
+      reactionBtn.className = `github-chat-reaction ${isUserReacted ? "user-reacted" : ""}`
+      reactionBtn.setAttribute("data-emoji", emoji)
+      reactionBtn.setAttribute("data-user-reacted", isUserReacted.toString())
+      reactionBtn.setAttribute("title", reactionUsername)
+      reactionBtn.innerHTML = `
+        <span class="github-chat-reaction-emoji">${emoji}</span>
+        <span class="github-chat-reaction-count">1</span>
+      `
+      reactionsContainer.appendChild(reactionBtn)
+    }
+  } else {
+    // Removing a reaction
+    if (!reactionsContainer) return
+
+    const reactionBtn = reactionsContainer.querySelector(
+      `.github-chat-reaction[data-emoji="${emoji}"]`
+    ) as HTMLElement
+    if (!reactionBtn) return
+
+    const countEl = reactionBtn.querySelector(".github-chat-reaction-count")
+    const currentCount = parseInt(countEl?.textContent || "0")
+
+    if (currentCount <= 1) {
+      // Remove the reaction button entirely
+      reactionBtn.remove()
+      // Remove container if empty
+      if (reactionsContainer.children.length === 0) {
+        reactionsContainer.remove()
+      }
+    } else {
+      // Decrement count
+      if (countEl) countEl.textContent = (currentCount - 1).toString()
+
+      // Update title - remove username
+      const currentTitle = reactionBtn.getAttribute("title") || ""
+      const usernames = currentTitle
+        .split(", ")
+        .filter((u) => u !== reactionUsername)
+      reactionBtn.setAttribute("title", usernames.join(", "))
+
+      // Remove user-reacted if this is current user
+      if (reactionUserId === currentUserIdVal) {
+        reactionBtn.classList.remove("user-reacted")
+        reactionBtn.setAttribute("data-user-reacted", "false")
+      }
+    }
+  }
+
+  // Update message cache with reaction change
+  if (currentConversationId) {
+    const cachedData = messageCache.get(currentConversationId)
+    if (cachedData) {
+      const msg = cachedData.messages.find((m) => m.id === messageId)
+      if (msg) {
+        if (!msg.reactions) msg.reactions = []
+        if (isAdding) {
+          // Add reaction to cache
+          const existingReaction = msg.reactions.find(
+            (r) => r.emoji === emoji && r.user_id === reactionUserId
+          )
+          if (!existingReaction) {
+            msg.reactions.push({
+              emoji,
+              user_id: reactionUserId,
+              username: reactionUsername
+            })
+          }
+        } else {
+          // Remove reaction from cache
+          msg.reactions = msg.reactions.filter(
+            (r) => !(r.emoji === emoji && r.user_id === reactionUserId)
+          )
+        }
+        cachedData.timestamp = Date.now()
+      }
+    }
+  }
 }
 
 // Pending read timeout - cancelled if user leaves conversation quickly
@@ -314,7 +544,9 @@ export async function renderConversationViewInto(
               msg.content,
               msg.created_at,
               isSent,
-              statusIcon
+              statusIcon,
+              msg.reactions || [],
+              currentUserId
             )
           })
           .join("")
@@ -460,7 +692,9 @@ export async function renderConversationViewInto(
               msg.content,
               msg.created_at,
               isSent,
-              statusIcon
+              statusIcon,
+              msg.reactions || [],
+              userId
             )
           })
           .join("")
@@ -558,7 +792,9 @@ export async function renderConversationViewInto(
               msg.content,
               msg.created_at,
               isSent,
-              statusIcon
+              statusIcon,
+              msg.reactions || [],
+              userId
             )
           })
           .join("")
@@ -598,6 +834,29 @@ export async function renderConversationViewInto(
   // Add click listener for message actions (reaction, options)
   msgContainer?.addEventListener("click", (e) => {
     const target = e.target as HTMLElement
+
+    // Handle reaction badge clicks (toggle reaction)
+    const reactionBtn = target.closest(".github-chat-reaction") as HTMLElement
+    if (reactionBtn) {
+      e.stopPropagation()
+      const emoji = reactionBtn.dataset.emoji
+      const messageEl = reactionBtn.closest(
+        ".github-chat-message"
+      ) as HTMLElement
+      const messageId = messageEl?.dataset.messageId
+      const userReacted = reactionBtn.dataset.userReacted === "true"
+
+      if (!emoji || !messageId || !currentConversationId) return
+
+      if (userReacted) {
+        removeReaction(currentConversationId, messageId, emoji)
+      } else {
+        addReaction(currentConversationId, messageId, emoji)
+      }
+      return
+    }
+
+    // Handle action button clicks
     const actionBtn = target.closest(".github-chat-action-btn") as HTMLElement
     if (!actionBtn) return
 
@@ -827,6 +1086,23 @@ export async function renderConversationViewInto(
             }
           }
         })
+      },
+
+      onReaction: (
+        type: "added" | "removed",
+        messageId: string,
+        emoji: string,
+        reactionUserId: string,
+        reactionUsername: string
+      ) => {
+        updateReactionInDOM(
+          messageId,
+          emoji,
+          reactionUserId,
+          reactionUsername,
+          type === "added",
+          userId
+        )
       }
     })
 
