@@ -34,6 +34,53 @@ import {
 import { STATUS_ICONS } from "./types"
 import { escapeHtml, formatTime } from "./utils"
 
+// Pending read timeout - cancelled if user leaves conversation quickly
+let pendingReadTimeout: ReturnType<typeof setTimeout> | null = null
+let pendingReadConversationId: string | null = null
+let pendingReadMessageIds: string[] = []
+
+// Cancel any pending mark-as-read operation
+export function cancelPendingRead(): void {
+  if (pendingReadTimeout) {
+    clearTimeout(pendingReadTimeout)
+    pendingReadTimeout = null
+  }
+  pendingReadConversationId = null
+  pendingReadMessageIds = []
+}
+
+// Schedule marking messages as read after a delay
+function scheduleMarkAsRead(
+  conversationId: string,
+  messageIds: string[]
+): void {
+  // Cancel any existing pending read
+  cancelPendingRead()
+
+  pendingReadConversationId = conversationId
+  pendingReadMessageIds = messageIds
+
+  // Wait 1.5 seconds before marking as read - gives user time to actually read
+  pendingReadTimeout = setTimeout(() => {
+    if (pendingReadConversationId === conversationId) {
+      // Mark conversation as read
+      markConversationAsRead(conversationId).then(() => {
+        setChatListCache(null)
+        const nav = getNavigationCallbacks()
+        nav?.refreshUnreadBadge()
+      })
+
+      // Mark individual messages as read
+      if (pendingReadMessageIds.length > 0) {
+        markMessagesAsRead(pendingReadMessageIds)
+      }
+    }
+    pendingReadTimeout = null
+    pendingReadConversationId = null
+    pendingReadMessageIds = []
+  }, 1500)
+}
+
 // Helper to clear unread count in chat list cache when opening a conversation
 function clearUnreadInCache(conversationId: string): void {
   if (!chatListCache) return
@@ -98,10 +145,9 @@ export async function renderConversationViewInto(
   // Stop listening for global messages (list view listener)
   setGlobalMessageListener(null)
 
-  // Immediately clear unread count in chat list cache for this conversation
-  if (existingConversationId) {
-    clearUnreadInCache(existingConversationId)
-  }
+  // Note: We no longer clear unread count immediately here.
+  // The read status is now delayed (scheduleMarkAsRead) to give the user
+  // time to actually read the messages. Cache is cleared when the read is confirmed.
 
   // Check if we have cached messages for instant display
   const cached = existingConversationId
@@ -580,7 +626,8 @@ export async function renderConversationViewInto(
         msgContainer?.appendChild(messageEl)
         msgContainer?.scrollTo(0, msgContainer.scrollHeight)
 
-        // Mark as read immediately since drawer is open
+        // Mark as read immediately - user is actively viewing this conversation
+        // (The initial mark-as-read is delayed, but subsequent messages can be marked immediately)
         markMessagesAsRead([newMessage.id])
       },
 
@@ -608,19 +655,9 @@ export async function renderConversationViewInto(
 
     setWsCleanup(cleanup)
 
-    // Mark the conversation as read (updates the server's last_read_at timestamp)
-    markConversationAsRead(conversation.id).then(() => {
-      // Invalidate the chat list cache so back navigation shows fresh unread counts
-      setChatListCache(null)
-      // Refresh the unread badge in the header after marking as read
-      const nav = getNavigationCallbacks()
-      nav?.refreshUnreadBadge()
-    })
-
-    // Now that we're joined, mark any unread messages as read
-    if (unreadMessageIds.length > 0) {
-      markMessagesAsRead(unreadMessageIds)
-    }
+    // Schedule marking as read after a delay (gives user time to actually read)
+    // This will be cancelled if user leaves the conversation quickly
+    scheduleMarkAsRead(conversation.id, unreadMessageIds)
   } catch (error) {
     console.error("WebSocket error:", error)
   }
