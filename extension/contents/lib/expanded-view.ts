@@ -184,7 +184,8 @@ export async function collapseToDrawer(): Promise<void> {
     await nav.openChatDrawer(
       currentConv.other_username,
       currentConv.other_display_name || currentConv.other_username,
-      currentConv.other_avatar_url
+      currentConv.other_avatar_url,
+      currentConvId || undefined
     )
   } else if (nav) {
     // No conversation selected, open list view

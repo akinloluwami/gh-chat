@@ -12,7 +12,8 @@ export type NavigationCallbacks = {
   openChatDrawer: (
     username: string,
     displayName: string,
-    avatar: string
+    avatar: string,
+    existingConversationId?: string
   ) => Promise<void>
   refreshUnreadBadge: () => void
 }

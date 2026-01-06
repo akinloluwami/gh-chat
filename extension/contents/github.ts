@@ -15,7 +15,11 @@ import {
   cancelPendingRead,
   renderConversationViewInto
 } from "./lib/conversation"
-import { renderListView, renderListViewAnimated, startListMessageListener } from "./lib/list"
+import {
+  renderListView,
+  renderListViewAnimated,
+  startListMessageListener
+} from "./lib/list"
 import { getProfileUsername, isProfilePage } from "./lib/profile"
 import {
   chatDrawer,
@@ -162,7 +166,8 @@ async function openChatListDrawer(): Promise<void> {
 async function openChatDrawer(
   username: string,
   displayName: string,
-  avatar: string
+  avatar: string,
+  existingConversationId?: string
 ): Promise<void> {
   // Check if authenticated first
   const isAuth = await checkAuth()
@@ -201,7 +206,13 @@ async function openChatDrawer(
   const viewEl = document.createElement("div")
   viewEl.className = "github-chat-view"
   drawer.appendChild(viewEl)
-  await renderConversationViewInto(viewEl, username, displayName, avatar)
+  await renderConversationViewInto(
+    viewEl,
+    username,
+    displayName,
+    avatar,
+    existingConversationId
+  )
 }
 
 // Register navigation callbacks for use by child modules
