@@ -53,14 +53,12 @@ export function generateListViewInnerHTML(chats: ChatPreview[]): string {
                 ${!chat.hasAccount ? '<span class="github-chat-not-on-platform-badge" title="Not on GH Chat yet">!</span>' : ""}
               </div>
               <div class="github-chat-list-content">
-                <div class="github-chat-list-header">
-                  <span class="github-chat-list-name">${escapeHtml(chat.displayName)}</span>
-                  <span class="github-chat-list-time">${formatRelativeTime(chat.lastMessageTime)}</span>
-                </div>
-                <div class="github-chat-list-message-row">
-                  <p class="github-chat-list-preview">${escapeHtml(chat.lastMessage)}</p>
-                  ${chat.unreadCount && chat.unreadCount > 0 ? `<span class="github-chat-list-unread-badge">${chat.unreadCount > 99 ? "99+" : chat.unreadCount}</span>` : ""}
-                </div>
+                <span class="github-chat-list-name">${escapeHtml(chat.displayName)}</span>
+                <p class="github-chat-list-preview">${escapeHtml(chat.lastMessage)}</p>
+              </div>
+              <div class="github-chat-list-meta">
+                <span class="github-chat-list-time">${formatRelativeTime(chat.lastMessageTime)}</span>
+                ${chat.unreadCount && chat.unreadCount > 0 ? `<span class="github-chat-list-unread-badge">${chat.unreadCount > 99 ? "99+" : chat.unreadCount}</span>` : ""}
               </div>
             </div>
           `
