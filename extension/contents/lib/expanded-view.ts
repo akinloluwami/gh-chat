@@ -2,7 +2,9 @@
 
 import {
   getConversations,
+  getSettings,
   setGlobalMessageListener,
+  updateSettings,
   type Message as ApiMessage,
   type Conversation
 } from "~lib/api"
@@ -35,7 +37,8 @@ const ICONS = {
   close: `<svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path></svg>`,
   minimize: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>`,
   newChat: `<svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M1.5 8a6.5 6.5 0 1 1 13 0A.75.75 0 0 0 16 8a8 8 0 1 0-8 8 .75.75 0 0 0 0-1.5A6.5 6.5 0 0 1 1.5 8Z"></path><path fill="currentColor" d="M11.75 7.75a.75.75 0 0 1 .75.75v2.25H14.75a.75.75 0 0 1 0 1.5H12.5v2.25a.75.75 0 0 1-1.5 0v-2.25H8.75a.75.75 0 0 1 0-1.5H11V8.5a.75.75 0 0 1 .75-.75Z"></path></svg>`,
-  search: `<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"></path></svg>`
+  search: `<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"></path></svg>`,
+  settings: `<svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M8 0a8.2 8.2 0 0 1 .701.031C9.444.095 9.99.645 10.16 1.29l.288 1.107c.018.066.079.158.212.224.231.114.454.243.668.386.123.082.233.09.299.071l1.103-.303c.644-.176 1.392.021 1.82.63.27.385.506.792.704 1.218.315.675.111 1.422-.364 1.891l-.814.806c-.049.048-.098.147-.088.294a6.1 6.1 0 0 1 0 .772c-.01.147.039.246.088.294l.814.806c.475.469.679 1.216.364 1.891a7.977 7.977 0 0 1-.704 1.217c-.428.61-1.176.807-1.82.63l-1.102-.302c-.067-.019-.177-.011-.3.071a5.909 5.909 0 0 1-.668.386c-.133.066-.194.158-.211.224l-.29 1.106c-.168.646-.715 1.196-1.458 1.26a8.006 8.006 0 0 1-1.402 0c-.743-.064-1.289-.614-1.458-1.26l-.289-1.106c-.018-.066-.079-.158-.212-.224a5.738 5.738 0 0 1-.668-.386c-.123-.082-.233-.09-.299-.071l-1.103.303c-.644.176-1.392-.021-1.82-.63a8.12 8.12 0 0 1-.704-1.218c-.315-.675-.111-1.422.363-1.891l.815-.806c.05-.048.098-.147.088-.294a6.214 6.214 0 0 1 0-.772c.01-.147-.038-.246-.088-.294l-.815-.806C.635 6.045.431 5.298.746 4.623a7.92 7.92 0 0 1 .704-1.217c.428-.61 1.176-.807 1.82-.63l1.102.302c.067.019.177.011.3-.071.214-.143.437-.272.668-.386.133-.066.194-.158.211-.224l.29-1.106C6.009.645 6.556.095 7.299.03 7.53.01 7.764 0 8 0Zm-.571 1.525c-.036.003-.108.036-.137.146l-.289 1.105c-.147.561-.549.967-.998 1.189-.173.086-.34.183-.5.29-.417.278-.97.423-1.529.27l-1.103-.303c-.109-.03-.175.016-.195.045-.22.312-.412.644-.573.99-.014.031-.021.11.059.19l.815.806c.411.406.562.957.53 1.456a4.709 4.709 0 0 0 0 .582c.032.499-.119 1.05-.53 1.456l-.815.806c-.081.08-.073.159-.059.19.161.346.353.677.573.989.02.03.085.076.195.046l1.102-.303c.56-.153 1.113-.008 1.53.27.161.107.328.204.501.29.447.222.85.629.997 1.189l.289 1.105c.029.109.101.143.137.146a6.6 6.6 0 0 0 1.142 0c.036-.003.108-.036.137-.146l.289-1.105c.147-.561.549-.967.998-1.189.173-.086.34-.183.5-.29.417-.278.97-.423 1.529-.27l1.103.303c.109.029.175-.016.195-.045.22-.313.411-.644.573-.99.014-.031.021-.11-.059-.19l-.815-.806c-.411-.406-.562-.957-.53-1.456a4.709 4.709 0 0 0 0-.582c-.032-.499.119-1.05.53-1.456l.815-.806c.081-.08.073-.159.059-.19a6.464 6.464 0 0 0-.573-.989c-.02-.03-.085-.076-.195-.046l-1.102.303c-.56.153-1.113.008-1.53-.27a4.44 4.44 0 0 0-.501-.29c-.447-.222-.85-.629-.997-1.189l-.289-1.105c-.029-.11-.101-.143-.137-.146a6.6 6.6 0 0 0-1.142 0ZM11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM9.5 8a1.5 1.5 0 1 0-3.001.001A1.5 1.5 0 0 0 9.5 8Z"/></svg>`
 }
 
 // Check if expanded view is open
@@ -62,6 +65,9 @@ export async function openExpandedView(
         <div class="github-chat-expanded-sidebar-header">
           <h2>Messages</h2>
           <div class="github-chat-expanded-header-actions">
+            <button class="github-chat-expanded-btn" id="github-chat-expanded-settings" title="Settings">
+              ${ICONS.settings}
+            </button>
             <button class="github-chat-expanded-btn" id="github-chat-expanded-new" title="New chat">
               ${ICONS.newChat}
             </button>
@@ -292,6 +298,14 @@ function setupExpandedViewListeners(): void {
     showNewChatDialog()
   })
 
+  // Settings button
+  const settingsBtn = expandedViewEl.querySelector(
+    "#github-chat-expanded-settings"
+  )
+  settingsBtn?.addEventListener("click", () => {
+    showSettingsDialog()
+  })
+
   // Search input
   const searchInput = expandedViewEl.querySelector(
     "#github-chat-expanded-search"
@@ -462,6 +476,82 @@ async function selectConversation(conversationId: string): Promise<void> {
     conv.other_has_account,
     true // isExpandedView flag
   )
+}
+
+// Show settings dialog
+async function showSettingsDialog(): Promise<void> {
+  const existingDialog = expandedViewEl?.querySelector(
+    ".github-chat-expanded-settings-dialog"
+  )
+  if (existingDialog) {
+    existingDialog.remove()
+    return
+  }
+
+  // Load current settings
+  const settings = await getSettings()
+  const hideOnlineStatus = settings?.hide_online_status ?? false
+
+  const dialog = document.createElement("div")
+  dialog.className = "github-chat-expanded-settings-dialog"
+  dialog.innerHTML = `
+    <div class="github-chat-expanded-settings-dialog-content">
+      <div class="github-chat-expanded-settings-dialog-header">
+        <h3>Settings</h3>
+        <button class="github-chat-expanded-settings-close" aria-label="Close">
+          ${ICONS.close}
+        </button>
+      </div>
+      <div class="github-chat-expanded-settings-body">
+        <div class="github-chat-expanded-settings-section">
+          <h4>Privacy</h4>
+          <label class="github-chat-expanded-settings-toggle">
+            <span class="github-chat-expanded-settings-label">
+              <span class="github-chat-expanded-settings-label-text">Hide online status</span>
+              <span class="github-chat-expanded-settings-label-desc">When enabled, others won't see when you're online, and you won't see their online status either.</span>
+            </span>
+            <input type="checkbox" id="github-chat-settings-hide-status" ${hideOnlineStatus ? "checked" : ""} />
+            <span class="github-chat-expanded-settings-switch"></span>
+          </label>
+        </div>
+      </div>
+      <div class="github-chat-expanded-settings-footer">
+        <span class="github-chat-expanded-settings-status" id="github-chat-settings-status"></span>
+      </div>
+    </div>
+  `
+
+  expandedViewEl?.appendChild(dialog)
+
+  const closeBtn = dialog.querySelector(".github-chat-expanded-settings-close")
+  const hideStatusCheckbox = dialog.querySelector(
+    "#github-chat-settings-hide-status"
+  ) as HTMLInputElement
+  const statusEl = dialog.querySelector("#github-chat-settings-status")
+
+  closeBtn?.addEventListener("click", () => dialog.remove())
+  dialog.addEventListener("click", (e) => {
+    if (e.target === dialog) dialog.remove()
+  })
+
+  // Handle toggle change
+  hideStatusCheckbox?.addEventListener("change", async () => {
+    const newValue = hideStatusCheckbox.checked
+    if (statusEl) statusEl.textContent = "Saving..."
+
+    const result = await updateSettings({ hide_online_status: newValue })
+
+    if (result) {
+      if (statusEl) statusEl.textContent = "Saved"
+      setTimeout(() => {
+        if (statusEl) statusEl.textContent = ""
+      }, 2000)
+    } else {
+      if (statusEl) statusEl.textContent = "Failed to save"
+      // Revert checkbox
+      hideStatusCheckbox.checked = !newValue
+    }
+  })
 }
 
 // Show new chat dialog

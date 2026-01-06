@@ -26,14 +26,16 @@ const localConversationSockets = new Map<string, Set<AuthenticatedSocket>>();
 const localUserSockets = new Map<string, Set<AuthenticatedSocket>>();
 const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
-// Get all users who have a conversation with this user (to notify about status changes)
+// Get all users who have a conversation with this user (to notify about status changes).
+// This should conceptually return all conversation partners; privacy filtering based on
+// a user's hidden online status is handled by the calling code.
 async function getConversationPartners(userId: string): Promise<string[]> {
   try {
     const results = await sql`
       SELECT DISTINCT 
-        CASE WHEN user1_id = ${userId}::uuid THEN user2_id ELSE user1_id END as partner_id
-      FROM conversations
-      WHERE user1_id = ${userId}::uuid OR user2_id = ${userId}::uuid
+        CASE WHEN c.user1_id = ${userId}::uuid THEN c.user2_id ELSE c.user1_id END as partner_id
+      FROM conversations c
+      WHERE c.user1_id = ${userId}::uuid OR c.user2_id = ${userId}::uuid
     `;
     return results.map((r) => r.partner_id);
   } catch {
@@ -41,13 +43,31 @@ async function getConversationPartners(userId: string): Promise<string[]> {
   }
 }
 
+// Check if user has hidden their online status
+async function isStatusHidden(userId: string): Promise<boolean> {
+  try {
+    const result = await sql`
+      SELECT hide_online_status FROM users WHERE id = ${userId}::uuid
+    `;
+    return result.length > 0 && result[0].hide_online_status === true;
+  } catch {
+    return false;
+  }
+}
+
 // Broadcast user status to all their conversation partners
-async function broadcastUserStatus(
+export async function broadcastUserStatus(
   userId: string,
   username: string,
   online: boolean,
   lastSeenAt?: string,
 ) {
+  // Don't broadcast if user has hidden their status
+  if (await isStatusHidden(userId)) {
+    console.log(`User ${username} has hidden status, not broadcasting`);
+    return;
+  }
+
   const partners = await getConversationPartners(userId);
   const statusMessage = {
     type: online ? "user_online" : "user_offline",
@@ -58,6 +78,34 @@ async function broadcastUserStatus(
 
   for (const partnerId of partners) {
     await broadcastToUser(partnerId, statusMessage);
+  }
+}
+
+// Broadcast that user's status is now hidden (appears offline to partners)
+export async function broadcastStatusHidden(userId: string, username: string) {
+  // Get all conversation partners (not filtered by hide_online_status)
+  try {
+    const results = await sql`
+      SELECT DISTINCT 
+        CASE WHEN user1_id = ${userId}::uuid THEN user2_id ELSE user1_id END as partner_id
+      FROM conversations
+      WHERE user1_id = ${userId}::uuid OR user2_id = ${userId}::uuid
+    `;
+    const partners = results.map((r) => r.partner_id);
+
+    const statusMessage = {
+      type: "user_offline",
+      userId,
+      username,
+      lastSeenAt: null,
+      hidden: true,
+    };
+
+    for (const partnerId of partners) {
+      await broadcastToUser(partnerId, statusMessage);
+    }
+  } catch (error) {
+    console.error("Error broadcasting status hidden:", error);
   }
 }
 
