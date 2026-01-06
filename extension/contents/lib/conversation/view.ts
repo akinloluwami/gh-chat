@@ -32,6 +32,7 @@ import {
 } from "./message-fetcher"
 import { setupNavigationButtons } from "./navigation"
 import { setupInfiniteScroll } from "./scroll-handler"
+import { fetchAndDisplayStatus, stopStatusPolling } from "./status-handler"
 import { setupWebSocketHandler } from "./websocket-handler"
 
 // Export read status functions for use by external modules
@@ -265,6 +266,9 @@ async function setupAllHandlers(
     userId,
     unreadMessageIds
   )
+
+  // Fetch and display user online status
+  fetchAndDisplayStatus(container, otherUserId)
 
   input?.focus()
 }
