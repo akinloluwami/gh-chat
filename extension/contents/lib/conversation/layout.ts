@@ -2,29 +2,45 @@
 
 import { escapeHtml } from "../utils"
 
+// Icons
+const ICONS = {
+  back: `<svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z"></path></svg>`,
+  close: `<svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path></svg>`,
+  expand: `<svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M3.75 2h2.5a.75.75 0 0 1 0 1.5h-2.5a.25.25 0 0 0-.25.25v2.5a.75.75 0 0 1-1.5 0v-2.5C2 2.784 2.784 2 3.75 2Zm6.5 0h2.5C13.216 2 14 2.784 14 3.75v2.5a.75.75 0 0 1-1.5 0v-2.5a.25.25 0 0 0-.25-.25h-2.5a.75.75 0 0 1 0-1.5ZM3.5 9.75a.75.75 0 0 0-1.5 0v2.5c0 .966.784 1.75 1.75 1.75h2.5a.75.75 0 0 1 0-1.5h-2.5a.25.25 0 0 1-.25-.25v-2.5Zm10 0a.75.75 0 0 0-1.5 0v2.5a.25.25 0 0 1-.25.25h-2.5a.75.75 0 0 0 0 1.5h2.5c.966 0 1.75-.784 1.75-1.75v-2.5Z"></path></svg>`
+}
+
 // Generate conversation view header HTML
 export function generateConversationHeaderHTML(
   avatar: string,
   displayName: string,
-  username: string
+  username: string,
+  isExpandedView: boolean = false
 ): string {
+  // In expanded view, don't show back/close buttons or expand button
+  const leftButton = isExpandedView
+    ? ""
+    : `<button class="github-chat-back" aria-label="Back">${ICONS.back}</button>`
+
+  const rightButtons = isExpandedView
+    ? ""
+    : `
+      <button class="github-chat-expand" aria-label="Expand" title="Open expanded view">
+        ${ICONS.expand}
+      </button>
+      <button class="github-chat-close" aria-label="Close">
+        ${ICONS.close}
+      </button>
+    `
+
   return `
     <div class="github-chat-header">
-      <button class="github-chat-back" aria-label="Back">
-        <svg viewBox="0 0 16 16" width="16" height="16">
-          <path fill="currentColor" d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z"></path>
-        </svg>
-      </button>
+      ${leftButton}
       <img src="${avatar}" alt="${displayName}" class="github-chat-avatar" />
       <div class="github-chat-user-info">
         <span class="github-chat-display-name">${escapeHtml(displayName)}</span>
         <span class="github-chat-username">@${escapeHtml(username)}</span>
       </div>
-      <button class="github-chat-close" aria-label="Close">
-        <svg viewBox="0 0 16 16" width="16" height="16">
-          <path fill="currentColor" d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path>
-        </svg>
-      </button>
+      ${rightButtons}
     </div>
   `
 }
@@ -35,10 +51,11 @@ export function generateConversationLayoutHTML(
   displayName: string,
   username: string,
   messagesHtml: string,
-  inputDisabled: boolean
+  inputDisabled: boolean,
+  isExpandedView: boolean = false
 ): string {
   return `
-    ${generateConversationHeaderHTML(avatar, displayName, username)}
+    ${generateConversationHeaderHTML(avatar, displayName, username, isExpandedView)}
     <div class="github-chat-messages" id="github-chat-messages">
       ${messagesHtml}
     </div>

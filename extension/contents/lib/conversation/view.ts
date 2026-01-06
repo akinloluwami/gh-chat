@@ -77,7 +77,8 @@ export async function renderConversationViewInto(
   username: string,
   displayName: string,
   avatar: string,
-  existingConversationId?: string
+  existingConversationId?: string,
+  isExpandedView: boolean = false
 ): Promise<void> {
   // Initialize view state
   setCurrentView("conversation")
@@ -95,7 +96,8 @@ export async function renderConversationViewInto(
     displayName,
     username,
     initialMessagesHtml,
-    !canUseInstantly
+    !canUseInstantly,
+    isExpandedView
   )
 
   // Scroll to bottom if we have cached messages
@@ -265,4 +267,84 @@ async function setupAllHandlers(
   )
 
   input?.focus()
+}
+
+// Render conversation view for expanded view (WhatsApp-style)
+export async function renderConversationView(
+  container: HTMLElement,
+  conversationId: string,
+  otherUserId: string,
+  otherUsername: string,
+  otherDisplayName: string,
+  otherAvatar: string,
+  otherHasAccount: boolean,
+  isExpandedView: boolean = false
+): Promise<void> {
+  // Initialize view state
+  setCurrentView("conversation")
+  setCurrentOtherUser({
+    username: otherUsername,
+    displayName: otherDisplayName,
+    avatar: otherAvatar
+  })
+  setCurrentConversationId(conversationId)
+  setGlobalMessageListener(null)
+
+  // Ensure current user info is set
+  const userId = await ensureCurrentUserInfo()
+
+  // Render initial layout with cached messages if available
+  const cached = messageCache.get(conversationId) || null
+  const { html: initialMessagesHtml, canUseInstantly } =
+    buildInitialMessagesHTML(cached, currentUserId)
+  container.innerHTML = generateConversationLayoutHTML(
+    otherAvatar,
+    otherDisplayName,
+    otherUsername,
+    initialMessagesHtml,
+    !canUseInstantly,
+    isExpandedView
+  )
+
+  // Scroll to bottom if we have cached messages
+  const messagesContainer = container.querySelector("#github-chat-messages")
+  if (canUseInstantly && messagesContainer) {
+    messagesContainer.scrollTo(0, messagesContainer.scrollHeight)
+  }
+
+  // Update header if user not on platform
+  if (!otherHasAccount) {
+    updateHeaderForOffPlatformUser(container, {
+      has_account: otherHasAccount,
+      display_name: otherDisplayName,
+      username: otherUsername
+    })
+  }
+
+  // Load messages
+  const { unreadMessageIds, hasMoreMessages } =
+    await loadMessagesForConversation(
+      container,
+      {
+        id: conversationId,
+        other_user: {
+          id: otherUserId,
+          has_account: otherHasAccount
+        }
+      },
+      cached,
+      canUseInstantly,
+      otherUsername,
+      userId
+    )
+
+  // Setup all interaction handlers
+  await setupAllHandlers(
+    container,
+    conversationId,
+    otherUserId,
+    userId,
+    hasMoreMessages,
+    unreadMessageIds
+  )
 }

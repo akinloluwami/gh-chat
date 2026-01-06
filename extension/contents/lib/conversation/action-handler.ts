@@ -131,40 +131,18 @@ function showOptionsMenu(anchorBtn: HTMLElement, messageId: string): void {
   // Get message created_at from data attribute (primary) or cache (fallback)
   let messageCreatedAt: string | null = messageEl?.dataset.createdAt || null
 
-  // Debug logging
-  console.log("[Edit Debug] messageId:", messageId)
-  console.log("[Edit Debug] isSent:", isSent)
-  console.log("[Edit Debug] messageCreatedAt from dataset:", messageCreatedAt)
-
   if (!messageCreatedAt && currentConversationId) {
     const cached = messageCache.get(currentConversationId)
     if (cached) {
       const msg = cached.messages.find((m) => m.id === messageId)
       if (msg) {
         messageCreatedAt = msg.created_at
-        console.log(
-          "[Edit Debug] messageCreatedAt from cache:",
-          messageCreatedAt
-        )
       }
     }
   }
 
-  if (messageCreatedAt) {
-    const created = new Date(messageCreatedAt).getTime()
-    const now = Date.now()
-    const diff = now - created
-    const hourInMs = 60 * 60 * 1000
-    console.log("[Edit Debug] created timestamp:", created)
-    console.log("[Edit Debug] now timestamp:", now)
-    console.log("[Edit Debug] diff (ms):", diff)
-    console.log("[Edit Debug] hourInMs:", hourInMs)
-    console.log("[Edit Debug] within window:", diff < hourInMs)
-  }
-
   const canEdit =
     isSent && messageCreatedAt && isWithinEditWindow(messageCreatedAt)
-  console.log("[Edit Debug] canEdit:", canEdit)
 
   const canDelete = isSent
 

@@ -4,6 +4,7 @@
 export {
   renderConversationViewAnimated,
   renderConversationViewInto,
+  renderConversationView,
   cancelPendingRead
 } from "./view"
 

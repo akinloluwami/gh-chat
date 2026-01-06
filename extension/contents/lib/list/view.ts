@@ -13,6 +13,12 @@ import { escapeHtml, formatRelativeTime } from "../utils"
 import { getAllChats } from "./data"
 import { startListMessageListener } from "./message-listener"
 
+// Icons
+const ICONS = {
+  expand: `<svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M3.75 2h2.5a.75.75 0 0 1 0 1.5h-2.5a.25.25 0 0 0-.25.25v2.5a.75.75 0 0 1-1.5 0v-2.5C2 2.784 2.784 2 3.75 2Zm6.5 0h2.5C13.216 2 14 2.784 14 3.75v2.5a.75.75 0 0 1-1.5 0v-2.5a.25.25 0 0 0-.25-.25h-2.5a.75.75 0 0 1 0-1.5ZM3.5 9.75a.75.75 0 0 0-1.5 0v2.5c0 .966.784 1.75 1.75 1.75h2.5a.75.75 0 0 1 0-1.5h-2.5a.25.25 0 0 1-.25-.25v-2.5Zm10 0a.75.75 0 0 0-1.5 0v2.5a.25.25 0 0 1-.25.25h-2.5a.75.75 0 0 0 0 1.5h2.5c.966 0 1.75-.784 1.75-1.75v-2.5Z"></path></svg>`,
+  close: `<svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path></svg>`
+}
+
 // Generate list view inner HTML
 export function generateListViewInnerHTML(chats: ChatPreview[]): string {
   return `
@@ -21,10 +27,11 @@ export function generateListViewInnerHTML(chats: ChatPreview[]): string {
         <span class="github-chat-display-name">Messages</span>
         <span class="github-chat-username">${chats.length} conversation${chats.length !== 1 ? "s" : ""}</span>
       </div>
+      <button class="github-chat-expand" aria-label="Expand" title="Open expanded view">
+        ${ICONS.expand}
+      </button>
       <button class="github-chat-close" aria-label="Close">
-        <svg viewBox="0 0 16 16" width="16" height="16">
-          <path fill="currentColor" d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path>
-        </svg>
+        ${ICONS.close}
       </button>
     </div>
     <div class="github-chat-list">
@@ -76,6 +83,18 @@ export function setupListViewEventListeners(
   closeBtn?.addEventListener("click", () => {
     const nav = getNavigationCallbacks()
     nav?.closeChatDrawer()
+  })
+
+  // Expand button handler
+  const expandBtn = root.querySelector(".github-chat-expand")
+  expandBtn?.addEventListener("click", async () => {
+    // Close the drawer first
+    const nav = getNavigationCallbacks()
+    nav?.closeChatDrawer()
+
+    // Open expanded view
+    const { openExpandedView } = await import("../expanded-view")
+    openExpandedView()
   })
 
   const chatItems = root.querySelectorAll(".github-chat-list-item")

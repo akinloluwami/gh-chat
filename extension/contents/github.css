@@ -276,6 +276,35 @@
   fill: currentColor;
 }
 
+/* Expand Button */
+.github-chat-expand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 6px;
+  color: var(--fgColor-muted, #9198a1);
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.github-chat-expand:hover {
+  background: var(--bgColor-neutral-muted, rgba(110, 118, 129, 0.4));
+  color: var(--fgColor-default, #f0f6fc);
+}
+
+.github-chat-expand svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
 /* Back Button */
 .github-chat-back {
   display: flex;
@@ -1441,4 +1470,369 @@
 
 .github-chat-confirm-delete:hover {
   background: #f85149;
+}
+
+/* ==================== EXPANDED VIEW ==================== */
+
+/* Overlay */
+.github-chat-expanded-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 10100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+/* Main container */
+.github-chat-expanded-container {
+  width: 90%;
+  max-width: 1200px;
+  height: 85%;
+  max-height: 800px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  display: flex;
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+/* Sidebar - Conversation List */
+.github-chat-expanded-sidebar {
+  width: 320px;
+  min-width: 280px;
+  border-right: 1px solid #30363d;
+  display: flex;
+  flex-direction: column;
+  background: #161b22;
+}
+
+.github-chat-expanded-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid #30363d;
+}
+
+.github-chat-expanded-sidebar-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #e6edf3;
+}
+
+.github-chat-expanded-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.github-chat-expanded-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #8b949e;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.github-chat-expanded-btn:hover {
+  background: #30363d;
+  color: #e6edf3;
+}
+
+/* Search */
+.github-chat-expanded-search {
+  padding: 12px 16px;
+  border-bottom: 1px solid #30363d;
+}
+
+.github-chat-expanded-search-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #8b949e;
+}
+
+.github-chat-expanded-search-input input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: #e6edf3;
+  font-size: 13px;
+  outline: none;
+}
+
+.github-chat-expanded-search-input input::placeholder {
+  color: #6e7681;
+}
+
+/* Conversation List */
+.github-chat-expanded-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.github-chat-expanded-list-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: #8b949e;
+  text-align: center;
+}
+
+.github-chat-expanded-start-btn {
+  margin-top: 16px;
+  padding: 8px 16px;
+  background: #238636;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.github-chat-expanded-start-btn:hover {
+  background: #2ea043;
+}
+
+/* List Item */
+.github-chat-expanded-list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  position: relative;
+}
+
+.github-chat-expanded-list-item:hover {
+  background: #21262d;
+}
+
+.github-chat-expanded-list-item.selected {
+  background: #1f6feb20;
+  border-left: 3px solid #1f6feb;
+}
+
+.github-chat-expanded-list-item.unread {
+  background: #161b22;
+}
+
+.github-chat-expanded-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.github-chat-expanded-list-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.github-chat-expanded-list-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.github-chat-expanded-list-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e6edf3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.github-chat-expanded-list-item.unread .github-chat-expanded-list-item-name {
+  color: #fff;
+}
+
+.github-chat-expanded-list-item-time {
+  font-size: 11px;
+  color: #6e7681;
+  flex-shrink: 0;
+}
+
+.github-chat-expanded-list-item-preview {
+  font-size: 13px;
+  color: #8b949e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.github-chat-expanded-list-item.unread .github-chat-expanded-list-item-preview {
+  color: #c9d1d9;
+}
+
+.github-chat-expanded-unread-badge {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #238636;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  text-align: center;
+}
+
+/* Main Panel */
+.github-chat-expanded-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #0d1117;
+  position: relative;
+}
+
+.github-chat-expanded-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #8b949e;
+  text-align: center;
+}
+
+.github-chat-expanded-empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.github-chat-expanded-empty p {
+  font-size: 16px;
+  margin: 0;
+}
+
+/* Conversation view inside expanded main */
+.github-chat-expanded-main .github-chat-header {
+  border-radius: 0;
+}
+
+.github-chat-expanded-main #github-chat-messages {
+  flex: 1;
+}
+
+.github-chat-expanded-main .github-chat-input-container {
+  border-radius: 0;
+}
+
+/* New Chat Dialog */
+.github-chat-expanded-new-dialog {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.github-chat-expanded-new-dialog-content {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 24px;
+  width: 280px;
+}
+
+.github-chat-expanded-new-dialog-content h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #e6edf3;
+}
+
+.github-chat-expanded-new-dialog-content input {
+  width: 100%;
+  padding: 10px 12px;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.github-chat-expanded-new-dialog-content input:focus {
+  border-color: #1f6feb;
+}
+
+.github-chat-expanded-new-dialog-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  justify-content: flex-end;
+}
+
+.github-chat-expanded-new-cancel,
+.github-chat-expanded-new-start {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+}
+
+.github-chat-expanded-new-cancel {
+  background: #21262d;
+  color: #c9d1d9;
+}
+
+.github-chat-expanded-new-cancel:hover {
+  background: #30363d;
+}
+
+.github-chat-expanded-new-start {
+  background: #238636;
+  color: #fff;
+}
+
+.github-chat-expanded-new-start:hover {
+  background: #2ea043;
+}
+
+.github-chat-expanded-new-start:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.github-chat-expanded-new-error {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #f85149;
 }
