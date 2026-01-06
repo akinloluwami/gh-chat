@@ -10,10 +10,8 @@ import { renderConversationView } from "./conversation"
 import {
   clearEditingMessage,
   clearQuotedMessage,
-  currentConversationId,
+  getNavigationCallbacks,
   setCurrentConversationId,
-  setCurrentUserId,
-  setCurrentUsername,
   setExpandedViewMode,
   setWsCleanup,
   wsCleanup
@@ -93,7 +91,7 @@ export async function openExpandedView(
   }
 }
 
-// Close expanded view
+// Close expanded view (without reopening drawer)
 export function closeExpandedView(): void {
   if (!expandedViewEl) return
 
@@ -115,6 +113,45 @@ export function closeExpandedView(): void {
   expandedViewEl = null
 }
 
+// Collapse to drawer view (minimize)
+export async function collapseToDrawer(): Promise<void> {
+  if (!expandedViewEl) return
+
+  // Capture current conversation data before closing
+  const currentConvId = selectedConversationId
+  const currentConv = conversationListData.find((c) => c.id === currentConvId)
+
+  // Cleanup WebSocket
+  if (wsCleanup) {
+    wsCleanup()
+    setWsCleanup(null)
+  }
+
+  // Clear state
+  clearQuotedMessage()
+  clearEditingMessage()
+  setCurrentConversationId(null)
+  setExpandedViewMode(false)
+  selectedConversationId = null
+
+  // Remove from DOM
+  expandedViewEl.remove()
+  expandedViewEl = null
+
+  // Reopen drawer with the same conversation if one was selected
+  const nav = getNavigationCallbacks()
+  if (currentConv && nav) {
+    await nav.openChatDrawer(
+      currentConv.other_username,
+      currentConv.other_display_name || currentConv.other_username,
+      currentConv.other_avatar_url
+    )
+  } else if (nav) {
+    // No conversation selected, open list view
+    await nav.openChatListDrawer()
+  }
+}
+
 // Setup event listeners
 function setupExpandedViewListeners(): void {
   if (!expandedViewEl) return
@@ -132,7 +169,7 @@ function setupExpandedViewListeners(): void {
       "#github-chat-expanded-collapse"
     )
     if (collapseBtn) {
-      closeExpandedView()
+      collapseToDrawer()
     }
   })
 

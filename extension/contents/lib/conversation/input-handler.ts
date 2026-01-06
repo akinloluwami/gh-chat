@@ -11,6 +11,7 @@ import {
   clearEditingMessage,
   clearQuotedMessage,
   currentConversationId,
+  getChatContainer,
   getEditingMessage,
   getQuotedMessage,
   incrementPendingMessageId,
@@ -28,7 +29,8 @@ export function showQuotePreview(
   content: string,
   senderUsername: string
 ): void {
-  const inputArea = document.querySelector(".github-chat-input-area")
+  const container = getChatContainer()
+  const inputArea = container?.querySelector(".github-chat-input-area")
   if (!inputArea) return
 
   // Remove existing previews
@@ -63,13 +65,15 @@ export function showQuotePreview(
 
 // Hide quote preview bar
 export function hideQuotePreview(): void {
-  const existing = document.querySelector(".github-chat-quote-preview")
+  const container = getChatContainer()
+  const existing = container?.querySelector(".github-chat-quote-preview")
   existing?.remove()
 }
 
 // Show edit preview bar above input (Twitter-style)
 export function showEditPreview(content: string): void {
-  const inputArea = document.querySelector(".github-chat-input-area")
+  const container = getChatContainer()
+  const inputArea = container?.querySelector(".github-chat-input-area")
   if (!inputArea) return
 
   // Remove existing previews
@@ -102,8 +106,9 @@ export function showEditPreview(content: string): void {
     clearEditingMessage()
     hideEditPreview()
     // Clear input
-    const input = document.getElementById(
-      "github-chat-input"
+    const container = getChatContainer()
+    const input = container?.querySelector(
+      "#github-chat-input"
     ) as HTMLTextAreaElement
     if (input) {
       input.value = ""
@@ -114,7 +119,8 @@ export function showEditPreview(content: string): void {
 
 // Hide edit preview bar
 export function hideEditPreview(): void {
-  const existing = document.querySelector(".github-chat-edit-preview")
+  const container = getChatContainer()
+  const existing = container?.querySelector(".github-chat-edit-preview")
   existing?.remove()
 }
 
@@ -337,8 +343,11 @@ async function handleEditMessage(
   )
 
   if (result.success) {
-    // Update message in DOM
-    const messageEl = document.querySelector(`[data-message-id="${messageId}"]`)
+    // Update message in DOM within the current container
+    const container = getChatContainer()
+    const messageEl = container?.querySelector(
+      `[data-message-id="${messageId}"]`
+    )
     if (messageEl) {
       const bubbleEl = messageEl.querySelector(".github-chat-bubble")
       if (bubbleEl) {

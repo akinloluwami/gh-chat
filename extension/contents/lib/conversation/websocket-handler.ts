@@ -177,7 +177,23 @@ export async function setupWebSocketHandler(
         if (msgEl) {
           const bubbleEl = msgEl.querySelector(".github-chat-bubble")
           if (bubbleEl) {
-            bubbleEl.textContent = newContent
+            // Preserve quoted content if present
+            const quotedContent = bubbleEl.querySelector(
+              ".github-chat-quoted-content"
+            )
+            if (quotedContent) {
+              // Keep the quoted content, only update the text after it
+              // Find or create the text node for the actual message content
+              const textNodes = Array.from(bubbleEl.childNodes).filter(
+                (node) => node.nodeType === Node.TEXT_NODE
+              )
+              // Remove existing text nodes
+              textNodes.forEach((node) => node.remove())
+              // Add new content as text node after quoted content
+              bubbleEl.appendChild(document.createTextNode(newContent))
+            } else {
+              bubbleEl.textContent = newContent
+            }
           }
 
           // Add edited indicator if not present

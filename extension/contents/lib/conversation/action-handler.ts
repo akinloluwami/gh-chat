@@ -252,8 +252,9 @@ function showOptionsMenu(anchorBtn: HTMLElement, messageId: string): void {
       if (isSent) {
         quoteSenderUsername = getCurrentUsername() || "You"
       } else {
-        // Get from header
-        const headerUsername = document.querySelector(
+        // Get from header within the current container
+        const container = getChatContainer()
+        const headerUsername = container?.querySelector(
           ".github-chat-header .github-chat-username"
         )
         quoteSenderUsername =
@@ -272,9 +273,10 @@ function showOptionsMenu(anchorBtn: HTMLElement, messageId: string): void {
       })
       showQuotePreview(messageContent, quoteSenderUsername)
 
-      // Focus input
-      const input = document.getElementById(
-        "github-chat-input"
+      // Focus input within the current container
+      const container = getChatContainer()
+      const input = container?.querySelector(
+        "#github-chat-input"
       ) as HTMLTextAreaElement
       input?.focus()
     } else if (action === "edit" && messageCreatedAt) {
@@ -290,9 +292,10 @@ function showOptionsMenu(anchorBtn: HTMLElement, messageId: string): void {
       })
       showEditPreview(messageContent)
 
-      // Put content in input and focus
-      const input = document.getElementById(
-        "github-chat-input"
+      // Put content in input and focus within the current container
+      const container = getChatContainer()
+      const input = container?.querySelector(
+        "#github-chat-input"
       ) as HTMLTextAreaElement
       if (input) {
         input.value = messageContent
