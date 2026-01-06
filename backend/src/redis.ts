@@ -1,5 +1,6 @@
 import { Redis } from "ioredis";
 import "dotenv/config";
+import { sql } from "./db/index.js";
 
 const REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
@@ -79,12 +80,41 @@ export async function unregisterUserConnection(userId: string): Promise<void> {
   const r = getRedis();
   await r.zrem(USER_PRESENCE_KEY, userId);
   await r.hdel(USER_CONVERSATION_KEY, userId);
+
+  // Update last_seen_at in database
+  try {
+    await sql`UPDATE users SET last_seen_at = NOW() WHERE id = ${userId}::uuid`;
+  } catch (err) {
+    console.error("Failed to update last_seen_at:", err);
+  }
 }
 
 export async function isUserOnline(userId: string): Promise<boolean> {
   const r = getRedis();
   const score = await r.zscore(USER_PRESENCE_KEY, userId);
   return score !== null;
+}
+
+// Get user status (online + last_seen)
+export async function getUserStatus(
+  userId: string,
+): Promise<{ online: boolean; lastSeenAt: string | null }> {
+  const online = await isUserOnline(userId);
+  if (online) {
+    return { online: true, lastSeenAt: null };
+  }
+
+  // Get last_seen_at from database
+  try {
+    const result =
+      await sql`SELECT last_seen_at FROM users WHERE id = ${userId}::uuid`;
+    return {
+      online: false,
+      lastSeenAt: result[0]?.last_seen_at?.toISOString() || null,
+    };
+  } catch {
+    return { online: false, lastSeenAt: null };
+  }
 }
 
 export async function setUserConversation(
