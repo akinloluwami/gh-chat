@@ -208,11 +208,16 @@ users.patch("/settings", async (c) => {
       // User is hiding their status - broadcast as offline/hidden
       await broadcastStatusHidden(currentUser.user_id, currentUser.username);
     } else {
-      // User is showing their status again - broadcast as online
+      // User is showing their status again - broadcast their actual online state
+      const userStatus = await getUserStatus(currentUser.user_id);
+      const isOnline =
+        typeof userStatus === "boolean"
+          ? userStatus
+          : !!(userStatus && (userStatus as any).online);
       await broadcastUserStatus(
         currentUser.user_id,
         currentUser.username,
-        true,
+        isOnline,
       );
     }
 
