@@ -21,6 +21,7 @@ import {
   setCurrentView
 } from "../state"
 import { setupMessageActionHandlers } from "./action-handler"
+import { setupBlockHandlers } from "./block-handler"
 import { setupInputHandlers } from "./input-handler"
 import {
   generateConversationErrorHTML,
@@ -289,6 +290,9 @@ async function setupAllHandlers(
 
   // Fetch and display user online status
   fetchAndDisplayStatus(container, otherUserId)
+
+  // Setup block/unblock menu handlers
+  setupBlockHandlers(container, otherUserId)
 
   input?.focus()
 }
