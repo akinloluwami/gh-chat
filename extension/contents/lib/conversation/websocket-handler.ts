@@ -6,7 +6,7 @@ import {
   type Message as ApiMessage
 } from "~lib/api"
 
-import { messageCache, setWsCleanup } from "../state"
+import { getExpandedViewMode, messageCache, setWsCleanup } from "../state"
 import { STATUS_ICONS } from "../types"
 import { escapeHtml, formatMessageContent, formatTime } from "../utils"
 import { generateTypingIndicatorHTML } from "./layout"
@@ -98,6 +98,17 @@ export async function setupWebSocketHandler(
 
         // Mark as read immediately - user is actively viewing this conversation
         markMessagesAsRead([newMessage.id])
+
+        // Update sidebar in expanded view (no unread since we're viewing)
+        if (getExpandedViewMode()) {
+          import("../expanded-view").then(({ updateConversationListItem }) => {
+            updateConversationListItem(
+              conversationId,
+              newMessage.content,
+              false
+            )
+          })
+        }
       },
 
       onTyping: (_typingUserId: string, typingUsername: string) => {
