@@ -2,6 +2,7 @@
 
 import {
   getConversations,
+  setGlobalMessageListener,
   type Message as ApiMessage,
   type Conversation
 } from "~lib/api"
@@ -13,8 +14,11 @@ import {
 import {
   clearEditingMessage,
   clearQuotedMessage,
+  getCurrentUserId,
+  getDraftMessage,
   getNavigationCallbacks,
   setCurrentConversationId,
+  setDraftMessage,
   setExpandedViewMode,
   setPreferredViewMode,
   setWsCleanup,
@@ -87,6 +91,9 @@ export async function openExpandedView(
   // Setup event listeners
   setupExpandedViewListeners()
 
+  // Start listening for new messages to update sidebar
+  startExpandedViewMessageListener()
+
   // Load conversations
   await loadConversationList()
 
@@ -94,6 +101,38 @@ export async function openExpandedView(
   if (initialConversationId) {
     await selectConversation(initialConversationId)
   }
+}
+
+// Start listening for new messages in expanded view
+function startExpandedViewMessageListener(): void {
+  setGlobalMessageListener((conversationId, message) => {
+    if (!expandedViewEl) return
+
+    const currentUserId = getCurrentUserId()
+    const isOwnMessage = message.sender_id === currentUserId
+
+    // Update the sidebar list item
+    updateConversationListItem(
+      conversationId,
+      message.content,
+      !isOwnMessage && conversationId !== selectedConversationId // increment unread if not own message and not currently viewing
+    )
+
+    // Also update the cached conversation data
+    const conv = conversationListData.find((c) => c.id === conversationId)
+    if (conv) {
+      conv.last_message = message.content
+      conv.last_message_time = message.created_at
+      if (!isOwnMessage && conversationId !== selectedConversationId) {
+        conv.unread_count = (conv.unread_count || 0) + 1
+      }
+    }
+  })
+}
+
+// Stop listening for messages
+function stopExpandedViewMessageListener(): void {
+  setGlobalMessageListener(null)
 }
 
 // Open expanded view with a specific user (from profile page)
@@ -130,9 +169,26 @@ export async function openExpandedViewWithUser(
   }
 }
 
+// Save draft message from current input
+function saveDraftFromInput(): void {
+  if (!selectedConversationId) return
+  const input = expandedViewEl?.querySelector(
+    "#github-chat-input"
+  ) as HTMLTextAreaElement
+  if (input && input.value.trim()) {
+    setDraftMessage(selectedConversationId, input.value)
+  }
+}
+
 // Close expanded view (without reopening drawer)
 export function closeExpandedView(): void {
   if (!expandedViewEl) return
+
+  // Save draft before closing
+  saveDraftFromInput()
+
+  // Stop listening for messages
+  stopExpandedViewMessageListener()
 
   // Cleanup WebSocket
   if (wsCleanup) {
@@ -159,6 +215,12 @@ export async function collapseToDrawer(): Promise<void> {
   // Capture current conversation data before closing
   const currentConvId = selectedConversationId
   const currentConv = conversationListData.find((c) => c.id === currentConvId)
+
+  // Save draft before closing
+  saveDraftFromInput()
+
+  // Stop listening for messages
+  stopExpandedViewMessageListener()
 
   // Cleanup WebSocket
   if (wsCleanup) {
@@ -350,6 +412,9 @@ function filterConversationList(query: string): void {
 // Select a conversation
 async function selectConversation(conversationId: string): Promise<void> {
   if (selectedConversationId === conversationId) return
+
+  // Save draft from current conversation before switching
+  saveDraftFromInput()
 
   // Cleanup previous conversation
   if (wsCleanup) {
