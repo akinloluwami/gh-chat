@@ -53,6 +53,25 @@ export let chatListCache: { chats: ChatPreview[]; timestamp: number } | null =
   null
 export const CHAT_LIST_CACHE_TTL = 10000 // 10 seconds
 
+// Draft messages storage (per conversation)
+const draftMessages: Map<string, string> = new Map()
+
+export function setDraftMessage(conversationId: string, text: string): void {
+  if (text.trim()) {
+    draftMessages.set(conversationId, text)
+  } else {
+    draftMessages.delete(conversationId)
+  }
+}
+
+export function getDraftMessage(conversationId: string): string {
+  return draftMessages.get(conversationId) || ""
+}
+
+export function clearDraftMessage(conversationId: string): void {
+  draftMessages.delete(conversationId)
+}
+
 // Quote reply state
 export type QuotedMessage = {
   id: string
