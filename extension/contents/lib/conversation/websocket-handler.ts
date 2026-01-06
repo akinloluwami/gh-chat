@@ -8,7 +8,7 @@ import {
 
 import { messageCache, setWsCleanup } from "../state"
 import { STATUS_ICONS } from "../types"
-import { escapeHtml, formatTime } from "../utils"
+import { escapeHtml, formatMessageContent, formatTime } from "../utils"
 import { generateTypingIndicatorHTML } from "./layout"
 import { MESSAGE_ACTION_ICONS } from "./message-html"
 import { updateReactionInDOM } from "./reactions"
@@ -87,7 +87,7 @@ export async function setupWebSocketHandler(
                 ${MESSAGE_ACTION_ICONS.options}
               </button>
             </div>
-            <div class="github-chat-bubble">${escapeHtml(newMessage.content)}</div>
+            <div class="github-chat-bubble">${formatMessageContent(newMessage.content)}</div>
           </div>
           <div class="github-chat-meta">
             <span class="github-chat-time">${formatTime(new Date(newMessage.created_at).getTime())}</span>
@@ -182,17 +182,11 @@ export async function setupWebSocketHandler(
               ".github-chat-quoted-content"
             )
             if (quotedContent) {
-              // Keep the quoted content, only update the text after it
-              // Find or create the text node for the actual message content
-              const textNodes = Array.from(bubbleEl.childNodes).filter(
-                (node) => node.nodeType === Node.TEXT_NODE
-              )
-              // Remove existing text nodes
-              textNodes.forEach((node) => node.remove())
-              // Add new content as text node after quoted content
-              bubbleEl.appendChild(document.createTextNode(newContent))
+              // Keep the quoted content, only update the message content after it
+              const quotedHTML = quotedContent.outerHTML
+              bubbleEl.innerHTML = quotedHTML + formatMessageContent(newContent)
             } else {
-              bubbleEl.textContent = newContent
+              bubbleEl.innerHTML = formatMessageContent(newContent)
             }
           }
 
