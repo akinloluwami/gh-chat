@@ -137,6 +137,19 @@ export async function initDb() {
     END $$;
   `;
 
+  // Add hide_online_status column to users table (for privacy)
+  await sql`
+    DO $$ 
+    BEGIN 
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name = 'hide_online_status'
+      ) THEN 
+        ALTER TABLE users ADD COLUMN hide_online_status BOOLEAN DEFAULT FALSE;
+      END IF;
+    END $$;
+  `;
+
   // Migrate messages table timestamps to TIMESTAMPTZ
   await sql`
     DO $$ 
