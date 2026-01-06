@@ -1830,6 +1830,10 @@
   background: #161b22;
 }
 
+.github-chat-expanded-list-item.unread:hover {
+  background: #21262d;
+}
+
 .github-chat-expanded-avatar-wrapper {
   position: relative;
   flex-shrink: 0;
