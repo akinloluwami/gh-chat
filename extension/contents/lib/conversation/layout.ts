@@ -7,7 +7,8 @@ const ICONS = {
   back: `<svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z"></path></svg>`,
   close: `<svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path></svg>`,
   expand: `<svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M3.75 2h2.5a.75.75 0 0 1 0 1.5h-2.5a.25.25 0 0 0-.25.25v2.5a.75.75 0 0 1-1.5 0v-2.5C2 2.784 2.784 2 3.75 2Zm6.5 0h2.5C13.216 2 14 2.784 14 3.75v2.5a.75.75 0 0 1-1.5 0v-2.5a.25.25 0 0 0-.25-.25h-2.5a.75.75 0 0 1 0-1.5ZM3.5 9.75a.75.75 0 0 0-1.5 0v2.5c0 .966.784 1.75 1.75 1.75h2.5a.75.75 0 0 1 0-1.5h-2.5a.25.25 0 0 1-.25-.25v-2.5Zm10 0a.75.75 0 0 0-1.5 0v2.5a.25.25 0 0 1-.25.25h-2.5a.75.75 0 0 0 0 1.5h2.5c.966 0 1.75-.784 1.75-1.75v-2.5Z"></path></svg>`,
-  minimize: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>`
+  minimize: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>`,
+  menu: `<svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M8 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3ZM1.5 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Zm13 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"></path></svg>`
 }
 
 // Generate conversation view header HTML
@@ -24,6 +25,17 @@ export function generateConversationHeaderHTML(
 
   const rightButtons = isExpandedView
     ? `
+      <div class="github-chat-header-menu-container">
+        <button class="github-chat-menu-btn" id="github-chat-menu-btn" aria-label="Menu" title="Menu">
+          ${ICONS.menu}
+        </button>
+        <div class="github-chat-header-menu" id="github-chat-header-menu" style="display: none;">
+          <button class="github-chat-menu-item github-chat-menu-block" id="github-chat-menu-block">
+            <span class="github-chat-menu-icon">🚫</span>
+            <span class="github-chat-menu-label">Block user</span>
+          </button>
+        </div>
+      </div>
       <button class="github-chat-minimize" id="github-chat-expanded-collapse" aria-label="Collapse to drawer" title="Collapse to drawer">
         ${ICONS.minimize}
       </button>
@@ -32,6 +44,17 @@ export function generateConversationHeaderHTML(
       </button>
     `
     : `
+      <div class="github-chat-header-menu-container">
+        <button class="github-chat-menu-btn" id="github-chat-menu-btn" aria-label="Menu" title="Menu">
+          ${ICONS.menu}
+        </button>
+        <div class="github-chat-header-menu" id="github-chat-header-menu" style="display: none;">
+          <button class="github-chat-menu-item github-chat-menu-block" id="github-chat-menu-block">
+            <span class="github-chat-menu-icon">🚫</span>
+            <span class="github-chat-menu-label">Block user</span>
+          </button>
+        </div>
+      </div>
       <button class="github-chat-expand" aria-label="Expand" title="Open expanded view">
         ${ICONS.expand}
       </button>
