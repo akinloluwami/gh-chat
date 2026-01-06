@@ -91,13 +91,12 @@ function showConfirmDialog(
   })
 }
 
-// Check if message is within 1 hour of creation
 function isWithinEditWindow(createdAt: string): boolean {
   const created = new Date(createdAt).getTime()
   const now = Date.now()
   const hourInMs = 60 * 60 * 1000
-  // TODO: Change back to 1 hour after testing
-  const windowMs = 24 * hourInMs // 24 hours for testing
+
+  const windowMs = 24 * hourInMs
   return now - created < windowMs
 }
 
