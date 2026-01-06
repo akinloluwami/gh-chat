@@ -193,6 +193,9 @@ users.patch("/settings", async (c) => {
     const body = await c.req.json();
     const { hide_online_status } = body;
 
+    if (!Object.prototype.hasOwnProperty.call(body, "hide_online_status")) {
+      return c.json({ error: "hide_online_status is required" }, 400);
+    }
     if (typeof hide_online_status !== "boolean") {
       return c.json({ error: "hide_online_status must be a boolean" }, 400);
     }
