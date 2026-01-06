@@ -14,6 +14,7 @@ import {
   setCurrentConversationId,
   setCurrentUserId,
   setCurrentUsername,
+  setExpandedViewMode,
   setWsCleanup,
   wsCleanup
 } from "./state"
@@ -26,7 +27,7 @@ let conversationListData: Conversation[] = []
 // Icons
 const ICONS = {
   close: `<svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"></path></svg>`,
-  collapse: `<svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M5.22 14.78a.75.75 0 0 0 1.06-1.06L4.56 12h8.69a.75.75 0 0 0 0-1.5H4.56l1.72-1.72a.75.75 0 0 0-1.06-1.06l-3 3a.75.75 0 0 0 0 1.06l3 3Zm5.56-6.5a.75.75 0 1 1-1.06-1.06l1.72-1.72H2.75a.75.75 0 0 1 0-1.5h8.69l-1.72-1.72a.75.75 0 0 1 1.06-1.06l3 3a.75.75 0 0 1 0 1.06l-3 3Z"></path></svg>`,
+  minimize: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>`,
   newChat: `<svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M1.5 8a6.5 6.5 0 1 1 13 0A.75.75 0 0 0 16 8a8 8 0 1 0-8 8 .75.75 0 0 0 0-1.5A6.5 6.5 0 0 1 1.5 8Z"></path><path fill="currentColor" d="M11.75 7.75a.75.75 0 0 1 .75.75v2.25H14.75a.75.75 0 0 1 0 1.5H12.5v2.25a.75.75 0 0 1-1.5 0v-2.25H8.75a.75.75 0 0 1 0-1.5H11V8.5a.75.75 0 0 1 .75-.75Z"></path></svg>`,
   search: `<svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z"></path></svg>`
 }
@@ -42,6 +43,9 @@ export async function openExpandedView(
 ): Promise<void> {
   if (expandedViewEl) return // Already open
 
+  // Set expanded view mode
+  setExpandedViewMode(true)
+
   // Create the expanded view overlay
   expandedViewEl = document.createElement("div")
   expandedViewEl.className = "github-chat-expanded-overlay"
@@ -53,9 +57,6 @@ export async function openExpandedView(
           <div class="github-chat-expanded-header-actions">
             <button class="github-chat-expanded-btn" id="github-chat-expanded-new" title="New chat">
               ${ICONS.newChat}
-            </button>
-            <button class="github-chat-expanded-btn" id="github-chat-expanded-collapse" title="Collapse to drawer">
-              ${ICONS.collapse}
             </button>
           </div>
         </div>
@@ -106,6 +107,7 @@ export function closeExpandedView(): void {
   clearQuotedMessage()
   clearEditingMessage()
   setCurrentConversationId(null)
+  setExpandedViewMode(false)
   selectedConversationId = null
 
   // Remove from DOM
@@ -124,12 +126,14 @@ function setupExpandedViewListeners(): void {
     }
   })
 
-  // Collapse button
-  const collapseBtn = expandedViewEl.querySelector(
-    "#github-chat-expanded-collapse"
-  )
-  collapseBtn?.addEventListener("click", () => {
-    closeExpandedView()
+  // Collapse button (using event delegation since it's rendered dynamically in the chat header)
+  expandedViewEl.addEventListener("click", (e) => {
+    const collapseBtn = (e.target as HTMLElement).closest(
+      "#github-chat-expanded-collapse"
+    )
+    if (collapseBtn) {
+      closeExpandedView()
+    }
   })
 
   // New chat button

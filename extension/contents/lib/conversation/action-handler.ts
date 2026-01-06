@@ -4,9 +4,10 @@ import { deleteMessage } from "~lib/api"
 
 import {
   clearEditingMessage,
-  currentConversationId,
-  currentUserId,
-  currentUsername,
+  getChatContainer,
+  getCurrentConversationId,
+  getCurrentUserId,
+  getCurrentUsername,
   messageCache,
   setEditingMessage,
   setQuotedMessage
@@ -49,8 +50,8 @@ function showConfirmDialog(
   closeConfirmDialog()
   closeOptionsMenu()
 
-  const drawer = document.querySelector(".github-chat-drawer") as HTMLElement
-  if (!drawer) return
+  const container = getChatContainer()
+  if (!container) return
 
   const dialog = document.createElement("div")
   dialog.className = "github-chat-confirm-overlay"
@@ -64,7 +65,7 @@ function showConfirmDialog(
     </div>
   `
 
-  drawer.appendChild(dialog)
+  container.appendChild(dialog)
   activeConfirmDialog = dialog
 
   // Handle button clicks
@@ -130,9 +131,10 @@ function showOptionsMenu(anchorBtn: HTMLElement, messageId: string): void {
 
   // Get message created_at from data attribute (primary) or cache (fallback)
   let messageCreatedAt: string | null = messageEl?.dataset.createdAt || null
+  const conversationId = getCurrentConversationId()
 
-  if (!messageCreatedAt && currentConversationId) {
-    const cached = messageCache.get(currentConversationId)
+  if (!messageCreatedAt && conversationId) {
+    const cached = messageCache.get(conversationId)
     if (cached) {
       const msg = cached.messages.find((m) => m.id === messageId)
       if (msg) {
@@ -192,36 +194,38 @@ function showOptionsMenu(anchorBtn: HTMLElement, messageId: string): void {
 
   // Position menu near the anchor button
   const rect = anchorBtn.getBoundingClientRect()
-  const drawer = document.querySelector(".github-chat-drawer") as HTMLElement
-  if (!drawer) return
+  const container = getChatContainer()
+  if (!container) return
 
-  const drawerRect = drawer.getBoundingClientRect()
+  const containerRect = container.getBoundingClientRect()
   menu.style.position = "absolute"
-  menu.style.right = `${drawerRect.right - rect.right}px`
+  menu.style.right = `${containerRect.right - rect.right}px`
   menu.style.zIndex = "10002"
 
   // Temporarily add to DOM to measure height
   menu.style.visibility = "hidden"
-  drawer.appendChild(menu)
+  container.appendChild(menu)
   const menuHeight = menu.offsetHeight
   menu.style.visibility = ""
 
-  // Check if menu would overflow bottom of drawer
-  const spaceBelow = drawerRect.bottom - rect.bottom - 4
-  const spaceAbove = rect.top - drawerRect.top - 4
+  // Check if menu would overflow bottom of container
+  const spaceBelow = containerRect.bottom - rect.bottom - 4
+  const spaceAbove = rect.top - containerRect.top - 4
 
   if (spaceBelow >= menuHeight || spaceBelow >= spaceAbove) {
     // Position below the button
-    menu.style.top = `${rect.bottom - drawerRect.top + 4}px`
+    menu.style.top = `${rect.bottom - containerRect.top + 4}px`
   } else {
     // Position above the button
-    menu.style.top = `${rect.top - drawerRect.top - menuHeight - 4}px`
+    menu.style.top = `${rect.top - containerRect.top - menuHeight - 4}px`
   }
 
   activeOptionsMenu = menu
 
   // Handle menu item clicks
   menu.addEventListener("click", async (e) => {
+    e.stopPropagation()
+
     const item = (e.target as HTMLElement).closest(
       ".github-chat-options-item"
     ) as HTMLElement
@@ -246,7 +250,7 @@ function showOptionsMenu(anchorBtn: HTMLElement, messageId: string): void {
       // Get the sender's username for quote
       let quoteSenderUsername = ""
       if (isSent) {
-        quoteSenderUsername = currentUsername || "You"
+        quoteSenderUsername = getCurrentUsername() || "You"
       } else {
         // Get from header
         const headerUsername = document.querySelector(
@@ -303,13 +307,14 @@ function showOptionsMenu(anchorBtn: HTMLElement, messageId: string): void {
         "Delete this message? This cannot be undone.",
         "Delete",
         async () => {
-          if (currentConversationId) {
-            const result = await deleteMessage(currentConversationId, messageId)
+          const convId = getCurrentConversationId()
+          if (convId) {
+            const result = await deleteMessage(convId, messageId)
             if (result.success) {
               // Remove from DOM
               messageEl?.remove()
               // Remove from cache
-              const cached = messageCache.get(currentConversationId)
+              const cached = messageCache.get(convId)
               if (cached) {
                 cached.messages = cached.messages.filter(
                   (m) => m.id !== messageId
@@ -355,23 +360,20 @@ export function setupMessageActionHandlers(msgContainer: HTMLElement): void {
       const messageId = messageEl?.dataset.messageId
       const userReacted = reactionBtn.dataset.userReacted === "true"
 
-      if (
-        !emoji ||
-        !messageId ||
-        !currentConversationId ||
-        !currentUserId ||
-        !currentUsername
-      )
-        return
+      const convId = getCurrentConversationId()
+      const userId = getCurrentUserId()
+      const username = getCurrentUsername()
+
+      if (!emoji || !messageId || !convId || !userId || !username) return
 
       // Use optimistic update
       handleReactionOptimistic(
-        currentConversationId,
+        convId,
         messageId,
         emoji,
         !userReacted,
-        currentUserId,
-        currentUsername
+        userId,
+        username
       )
       return
     }

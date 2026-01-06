@@ -9,8 +9,8 @@ import {
 import { getCurrentUserInfo } from "../auth"
 import {
   chatDrawer,
-  currentUserId,
-  currentUsername,
+  getCurrentUserId,
+  getCurrentUsername,
   messageCache,
   setCurrentConversationId,
   setCurrentOtherUser,
@@ -90,7 +90,7 @@ export async function renderConversationViewInto(
     ? messageCache.get(existingConversationId)
     : null
   const { html: initialMessagesHtml, canUseInstantly } =
-    buildInitialMessagesHTML(cached, currentUserId)
+    buildInitialMessagesHTML(cached, getCurrentUserId())
   container.innerHTML = generateConversationLayoutHTML(
     avatar,
     displayName,
@@ -149,8 +149,8 @@ export async function renderConversationViewInto(
 
 // Ensure current user info is loaded
 async function ensureCurrentUserInfo(): Promise<string | null> {
-  let userId = currentUserId
-  if (!userId || !currentUsername) {
+  let userId = getCurrentUserId()
+  if (!userId || !getCurrentUsername()) {
     const userInfo = await getCurrentUserInfo()
     userId = userInfo?.id || null
     setCurrentUserId(userId)
@@ -296,7 +296,7 @@ export async function renderConversationView(
   // Render initial layout with cached messages if available
   const cached = messageCache.get(conversationId) || null
   const { html: initialMessagesHtml, canUseInstantly } =
-    buildInitialMessagesHTML(cached, currentUserId)
+    buildInitialMessagesHTML(cached, userId)
   container.innerHTML = generateConversationLayoutHTML(
     otherAvatar,
     otherDisplayName,

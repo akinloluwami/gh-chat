@@ -2,7 +2,7 @@
 
 import { addReaction, removeReaction, type Reaction } from "~lib/api"
 
-import { currentConversationId, messageCache } from "../state"
+import { getCurrentConversationId, messageCache } from "../state"
 
 // Update reaction in DOM for real-time updates
 export function updateReactionInDOM(
@@ -19,8 +19,9 @@ export function updateReactionInDOM(
   if (!messageEl) return
 
   // De-duplicate: Check cache first to see if this reaction already exists
-  if (currentConversationId) {
-    const cachedData = messageCache.get(currentConversationId)
+  const convId = getCurrentConversationId()
+  if (convId) {
+    const cachedData = messageCache.get(convId)
     if (cachedData) {
       const msg = cachedData.messages.find((m) => m.id === messageId)
       if (msg && msg.reactions) {
@@ -131,8 +132,9 @@ export function updateReactionInDOM(
   }
 
   // Update message cache with reaction change
-  if (currentConversationId) {
-    const cachedData = messageCache.get(currentConversationId)
+  const currentConvId = getCurrentConversationId()
+  if (currentConvId) {
+    const cachedData = messageCache.get(currentConvId)
     if (cachedData) {
       const msg = cachedData.messages.find((m) => m.id === messageId)
       if (msg) {

@@ -7,10 +7,10 @@ import {
   searchEmojis
 } from "../emoji-data"
 import {
-  chatDrawer,
-  currentConversationId,
-  currentUserId,
-  currentUsername
+  getChatContainer,
+  getCurrentConversationId,
+  getCurrentUserId,
+  getCurrentUsername
 } from "../state"
 import { closeEmojiPopover } from "./emoji-popover"
 import { handleReactionOptimistic } from "./reactions"
@@ -87,8 +87,11 @@ function attachEmojiClickHandlers(container: HTMLElement): void {
           onSelectCallback(emoji)
         } else if (mode === "reaction" && messageId) {
           // Reaction mode - apply reaction to message
-          if (!currentConversationId || !currentUserId || !currentUsername)
-            return
+          const conversationId = getCurrentConversationId()
+          const userId = getCurrentUserId()
+          const username = getCurrentUsername()
+
+          if (!conversationId || !userId || !username) return
 
           const messageEl = document.querySelector(
             `.github-chat-message[data-message-id="${messageId}"]`
@@ -98,12 +101,12 @@ function attachEmojiClickHandlers(container: HTMLElement): void {
           )
 
           await handleReactionOptimistic(
-            currentConversationId,
+            conversationId,
             messageId,
             emoji,
             !existingReaction,
-            currentUserId,
-            currentUsername
+            userId,
+            username
           )
         }
       })
@@ -286,19 +289,20 @@ export function showFullEmojiPicker(
 
   const picker = createEmojiPickerElement()
 
-  // Append to chat drawer instead of body, so it stays within the drawer
-  if (!chatDrawer) {
-    console.error("Chat drawer not found")
+  // Append to chat container (drawer or expanded view)
+  const container = getChatContainer()
+  if (!container) {
+    console.error("Chat container not found")
     return
   }
 
-  // Position the picker within the chat drawer
+  // Position the picker within the chat container
   picker.style.position = "absolute"
   picker.style.top = "50px" // Below the header
   picker.style.left = "50%"
   picker.style.transform = "translateX(-50%)"
 
-  chatDrawer.appendChild(picker)
+  container.appendChild(picker)
   currentEmojiPicker = picker
 
   // Focus search input
@@ -332,19 +336,20 @@ export function showEmojiPickerForInsert(
 
   const picker = createEmojiPickerElement()
 
-  // Append to chat drawer instead of body, so it stays within the drawer
-  if (!chatDrawer) {
-    console.error("Chat drawer not found")
+  // Append to chat container (drawer or expanded view)
+  const container = getChatContainer()
+  if (!container) {
+    console.error("Chat container not found")
     return
   }
 
-  // Position the picker above the input area (bottom of drawer)
+  // Position the picker above the input area (bottom of container)
   picker.style.position = "absolute"
   picker.style.bottom = "70px" // Above the input area
   picker.style.left = "50%"
   picker.style.transform = "translateX(-50%)"
 
-  chatDrawer.appendChild(picker)
+  container.appendChild(picker)
   currentEmojiPicker = picker
 
   // Focus search input

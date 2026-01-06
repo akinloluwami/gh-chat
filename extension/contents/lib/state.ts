@@ -38,6 +38,7 @@ export let pendingMessageId = 0
 export let typingTimeout: ReturnType<typeof setTimeout> | null = null
 export let currentView: "list" | "conversation" = "list"
 export let currentOtherUser: CurrentOtherUser | null = null
+export let isExpandedViewMode: boolean = false
 
 // Message cache for instant loading
 export const messageCache: Map<
@@ -130,6 +131,22 @@ export function getCurrentView(): "list" | "conversation" {
 
 export function setCurrentOtherUser(user: CurrentOtherUser | null) {
   currentOtherUser = user
+}
+
+export function setExpandedViewMode(isExpanded: boolean) {
+  isExpandedViewMode = isExpanded
+}
+
+export function getExpandedViewMode(): boolean {
+  return isExpandedViewMode
+}
+
+// Helper to get the correct chat container (drawer or expanded view)
+export function getChatContainer(): HTMLElement | null {
+  if (isExpandedViewMode) {
+    return document.querySelector(".github-chat-expanded-main")
+  }
+  return chatDrawer
 }
 
 export function setChatListCache(

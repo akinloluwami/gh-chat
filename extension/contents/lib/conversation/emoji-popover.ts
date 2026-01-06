@@ -1,6 +1,10 @@
 // Quick emoji popover for reactions
 
-import { currentConversationId, currentUserId, currentUsername } from "../state"
+import {
+  getCurrentConversationId,
+  getCurrentUserId,
+  getCurrentUsername
+} from "../state"
 import { handleReactionOptimistic } from "./reactions"
 
 // Quick reaction emojis (13 total: 7 top row, 6 bottom row + expand button)
@@ -86,13 +90,11 @@ export function showEmojiPopover(
     btn.addEventListener("click", async (e) => {
       e.stopPropagation()
       const emoji = (btn as HTMLElement).dataset.emoji
-      if (
-        !emoji ||
-        !currentConversationId ||
-        !currentUserId ||
-        !currentUsername
-      )
-        return
+      const conversationId = getCurrentConversationId()
+      const userId = getCurrentUserId()
+      const username = getCurrentUsername()
+
+      if (!emoji || !conversationId || !userId || !username) return
 
       closeEmojiPopover()
 
@@ -106,12 +108,12 @@ export function showEmojiPopover(
 
       // Use optimistic update (isAdding = true if no existing reaction)
       await handleReactionOptimistic(
-        currentConversationId,
+        conversationId,
         messageId,
         emoji,
         !existingReaction,
-        currentUserId,
-        currentUsername
+        userId,
+        username
       )
     })
   })
