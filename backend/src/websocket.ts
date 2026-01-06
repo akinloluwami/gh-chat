@@ -26,7 +26,9 @@ const localConversationSockets = new Map<string, Set<AuthenticatedSocket>>();
 const localUserSockets = new Map<string, Set<AuthenticatedSocket>>();
 const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
-// Get all users who have a conversation with this user (to notify about status changes)
+// Get all users who have a conversation with this user (to notify about status changes).
+// This should conceptually return all conversation partners; privacy filtering based on
+// a user's hidden online status is handled by the calling code.
 async function getConversationPartners(userId: string): Promise<string[]> {
   try {
     const results = await sql`

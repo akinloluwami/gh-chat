@@ -149,7 +149,7 @@ export interface UserStatus {
   username: string
   online: boolean
   lastSeenAt: string | null
-  hidden?: boolean // True if status is hidden due to privacy settings
+  hidden?: boolean // True if the status is not shown because either you or this user has enabled "hide online status" privacy settings
 }
 
 // User settings interface

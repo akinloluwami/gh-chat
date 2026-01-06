@@ -233,7 +233,7 @@
 }
 
 .github-chat-status-indicator {
-  display: none;
+  display: inline-block;
 }
 
 .github-chat-status-indicator[data-status="online"] {
