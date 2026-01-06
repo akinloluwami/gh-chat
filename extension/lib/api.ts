@@ -149,12 +149,47 @@ export interface UserStatus {
   username: string
   online: boolean
   lastSeenAt: string | null
+  hidden?: boolean // True if status is hidden due to privacy settings
+}
+
+// User settings interface
+export interface UserSettings {
+  hide_online_status: boolean
 }
 
 // Get user online status by user ID
-export async function getUserStatus(userId: string): Promise<UserStatus | null> {
+export async function getUserStatus(
+  userId: string
+): Promise<UserStatus | null> {
   try {
     const response = await fetchWithAuth(`/users/${userId}/status`)
+    if (!response.ok) return null
+    return await response.json()
+  } catch {
+    return null
+  }
+}
+
+// Get current user's settings
+export async function getSettings(): Promise<UserSettings | null> {
+  try {
+    const response = await fetchWithAuth("/users/settings")
+    if (!response.ok) return null
+    return await response.json()
+  } catch {
+    return null
+  }
+}
+
+// Update current user's settings
+export async function updateSettings(
+  settings: Partial<UserSettings>
+): Promise<UserSettings | null> {
+  try {
+    const response = await fetchWithAuth("/users/settings", {
+      method: "PATCH",
+      body: JSON.stringify(settings)
+    })
     if (!response.ok) return null
     return await response.json()
   } catch {
@@ -610,12 +645,7 @@ function connectWebSocket(token: string): Promise<void> {
         }
 
         if (data.type === "user_offline" && userStatusCallback) {
-          userStatusCallback(
-            data.userId,
-            data.username,
-            false,
-            data.lastSeenAt
-          )
+          userStatusCallback(data.userId, data.username, false, data.lastSeenAt)
         }
       } catch (e) {
         console.error("WebSocket message parse error:", e)
