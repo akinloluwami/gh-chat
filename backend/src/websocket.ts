@@ -35,9 +35,7 @@ async function getConversationPartners(userId: string): Promise<string[]> {
       SELECT DISTINCT 
         CASE WHEN c.user1_id = ${userId}::uuid THEN c.user2_id ELSE c.user1_id END as partner_id
       FROM conversations c
-      JOIN users u ON u.id = CASE WHEN c.user1_id = ${userId}::uuid THEN c.user2_id ELSE c.user1_id END
-      WHERE (c.user1_id = ${userId}::uuid OR c.user2_id = ${userId}::uuid)
-        AND (u.hide_online_status IS NULL OR u.hide_online_status = FALSE)
+      WHERE c.user1_id = ${userId}::uuid OR c.user2_id = ${userId}::uuid
     `;
     return results.map((r) => r.partner_id);
   } catch {
