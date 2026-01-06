@@ -25,12 +25,14 @@ import {
   chatDrawer,
   chatOverlay,
   currentUserId,
+  getCurrentConversationId,
   setChatDrawer,
   setChatOverlay,
   setCurrentConversationId,
   setCurrentOtherUser,
   setCurrentUserId,
   setCurrentView,
+  setDraftMessage,
   setNavigationCallbacks,
   setTypingTimeout,
   setWsCleanup,
@@ -48,6 +50,17 @@ let currentUsername: string | null = null
 
 // Close chat drawer completely
 function closeChatDrawer(): void {
+  // Save draft message before closing
+  const convId = getCurrentConversationId()
+  if (convId && chatDrawer) {
+    const input = chatDrawer.querySelector(
+      "#github-chat-input"
+    ) as HTMLTextAreaElement
+    if (input && input.value.trim()) {
+      setDraftMessage(convId, input.value)
+    }
+  }
+
   // Clean up typing timeout
   if (typingTimeout) {
     clearTimeout(typingTimeout)
@@ -82,6 +95,17 @@ function closeChatDrawer(): void {
 
 // Go back from conversation to list view
 function goBackToList(): void {
+  // Save draft message before navigating away
+  const convId = getCurrentConversationId()
+  if (convId && chatDrawer) {
+    const input = chatDrawer.querySelector(
+      "#github-chat-input"
+    ) as HTMLTextAreaElement
+    if (input && input.value.trim()) {
+      setDraftMessage(convId, input.value)
+    }
+  }
+
   // Clean up typing timeout
   if (typingTimeout) {
     clearTimeout(typingTimeout)
