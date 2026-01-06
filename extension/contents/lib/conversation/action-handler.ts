@@ -348,8 +348,99 @@ function showOptionsMenu(anchorBtn: HTMLElement, messageId: string): void {
 
 // Setup click handlers for message actions
 export function setupMessageActionHandlers(msgContainer: HTMLElement): void {
-  msgContainer.addEventListener("click", (e) => {
+  msgContainer.addEventListener("click", async (e) => {
     const target = e.target as HTMLElement
+
+    // Handle retry button clicks for failed messages
+    const retryBtn = target.closest(".github-chat-retry-btn") as HTMLElement
+    if (retryBtn) {
+      e.stopPropagation()
+      const messageText = retryBtn.dataset.messageText
+      const replyToId = retryBtn.dataset.replyToId || undefined
+      const messageEl = retryBtn.closest(".github-chat-message") as HTMLElement
+
+      if (!messageText || !messageEl) return
+
+      // Update status to pending
+      const statusEl = messageEl.querySelector(".github-chat-status")
+      if (statusEl) {
+        statusEl.className = "github-chat-status pending"
+        const { STATUS_ICONS } = await import("../types")
+        statusEl.innerHTML = STATUS_ICONS.pending
+      }
+
+      // Show "Sending..." on retry button
+      retryBtn.innerHTML = `<svg class="github-chat-spinner" viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="20 10"></circle></svg> Sending...`
+      retryBtn.setAttribute("disabled", "true")
+
+      // Try to send again
+      const convId = getCurrentConversationId()
+      if (!convId) return
+
+      const { sendMessage } = await import("~lib/api")
+      const sentMessage = await sendMessage(convId, messageText, replyToId)
+
+      if (sentMessage) {
+        // Success - update message with real ID and status
+        messageEl.setAttribute("data-message-id", sentMessage.id.toString())
+        messageEl.setAttribute("data-created-at", sentMessage.created_at)
+        messageEl.removeAttribute("id")
+
+        // Update status to sent
+        if (statusEl) {
+          const { STATUS_ICONS } = await import("../types")
+          statusEl.className = "github-chat-status sent"
+          statusEl.innerHTML = STATUS_ICONS.sent
+        }
+
+        // Restore normal action buttons
+        const actionsEl = messageEl.querySelector(
+          ".github-chat-message-actions"
+        )
+        if (actionsEl) {
+          const { MESSAGE_ACTION_ICONS } = await import("./message-html")
+          actionsEl.innerHTML = `
+            <button class="github-chat-action-btn" data-action="reaction" title="Add reaction">
+              ${MESSAGE_ACTION_ICONS.reaction}
+            </button>
+            <button class="github-chat-action-btn" data-action="options" title="More options">
+              ${MESSAGE_ACTION_ICONS.options}
+            </button>
+          `
+        }
+
+        // Update cache
+        const { messageCache } = await import("../state")
+        const cachedData = messageCache.get(convId)
+        if (cachedData) {
+          cachedData.messages.push(sentMessage)
+          cachedData.timestamp = Date.now()
+        }
+
+        // Update sidebar in expanded view
+        const { getExpandedViewMode } = await import("../state")
+        if (getExpandedViewMode()) {
+          const { updateConversationListItem } = await import(
+            "../expanded-view"
+          )
+          updateConversationListItem(convId, messageText, false)
+        }
+      } else {
+        // Still failed - restore retry button
+        const { STATUS_ICONS } = await import("../types")
+        if (statusEl) {
+          statusEl.className = "github-chat-status failed"
+          statusEl.innerHTML = STATUS_ICONS.failed
+        }
+        const { escapeHtml } = await import("../utils")
+        retryBtn.innerHTML = `
+          <svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z"></path></svg>
+          Retry
+        `
+        retryBtn.removeAttribute("disabled")
+      }
+      return
+    }
 
     // Handle reaction badge clicks (toggle reaction)
     const reactionBtn = target.closest(".github-chat-reaction") as HTMLElement
