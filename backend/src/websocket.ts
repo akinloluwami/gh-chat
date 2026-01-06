@@ -26,6 +26,41 @@ const localConversationSockets = new Map<string, Set<AuthenticatedSocket>>();
 const localUserSockets = new Map<string, Set<AuthenticatedSocket>>();
 const typingTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
+// Get all users who have a conversation with this user (to notify about status changes)
+async function getConversationPartners(userId: string): Promise<string[]> {
+  try {
+    const results = await sql`
+      SELECT DISTINCT 
+        CASE WHEN user1_id = ${userId}::uuid THEN user2_id ELSE user1_id END as partner_id
+      FROM conversations
+      WHERE user1_id = ${userId}::uuid OR user2_id = ${userId}::uuid
+    `;
+    return results.map((r) => r.partner_id);
+  } catch {
+    return [];
+  }
+}
+
+// Broadcast user status to all their conversation partners
+async function broadcastUserStatus(
+  userId: string,
+  username: string,
+  online: boolean,
+  lastSeenAt?: string,
+) {
+  const partners = await getConversationPartners(userId);
+  const statusMessage = {
+    type: online ? "user_online" : "user_offline",
+    userId,
+    username,
+    lastSeenAt: online ? null : lastSeenAt || new Date().toISOString(),
+  };
+
+  for (const partnerId of partners) {
+    await broadcastToUser(partnerId, statusMessage);
+  }
+}
+
 // Add socket to local user tracking
 function addLocalUserSocket(socket: AuthenticatedSocket) {
   if (!socket.userId) return;
@@ -244,6 +279,12 @@ export function createWebSocketServer(server: Server) {
           // Register locally and in Redis
           addLocalUserSocket(ws);
           await registerUserConnection(user.userId);
+
+          // Broadcast online status to conversation partners (only if this is the first socket for this user)
+          const userSockets = localUserSockets.get(user.userId);
+          if (userSockets && userSockets.size === 1) {
+            await broadcastUserStatus(user.userId, user.username, true);
+          }
 
           // Subscribe to user-specific messages from Redis (from other servers)
           const unsubUser = await subscribeToUser(user.userId, (msg) => {
@@ -508,10 +549,18 @@ async function cleanupSocket(ws: AuthenticatedSocket) {
   }
 
   await leaveConversation(ws);
+
+  const userId = ws.userId;
+  const username = ws.username;
+
   removeLocalUserSocket(ws);
 
   // Unregister from Redis if no more local sockets for this user
-  if (ws.userId && !localUserSockets.has(ws.userId)) {
-    await unregisterUserConnection(ws.userId);
+  if (userId && !localUserSockets.has(userId)) {
+    await unregisterUserConnection(userId);
+    // Broadcast offline status to conversation partners
+    if (username) {
+      await broadcastUserStatus(userId, username, false);
+    }
   }
 }
