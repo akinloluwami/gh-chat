@@ -43,10 +43,14 @@ export function generateConversationHeaderHTML(
   return `
     <div class="github-chat-header">
       ${leftButton}
-      <img src="${avatar}" alt="${displayName}" class="github-chat-avatar" />
+      <div class="github-chat-avatar-container">
+        <img src="${avatar}" alt="${displayName}" class="github-chat-avatar" />
+        <span class="github-chat-status-indicator" id="github-chat-status-indicator" data-status="unknown"></span>
+      </div>
       <div class="github-chat-user-info">
         <span class="github-chat-display-name">${escapeHtml(displayName)}</span>
         <span class="github-chat-username">@${escapeHtml(username)}</span>
+        <span class="github-chat-user-status" id="github-chat-user-status"></span>
       </div>
       ${rightButtons}
     </div>
