@@ -534,6 +534,245 @@
   background: rgba(248, 81, 73, 0.2);
 }
 
+/* Profile Sheet Modal */
+.github-chat-profile-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+}
+
+.github-chat-profile-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+.github-chat-profile-sheet {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bgColor-default, #0d1117);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.25s ease-out;
+  max-height: 80%;
+  overflow-y: auto;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.github-chat-profile-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 16px;
+}
+
+.github-chat-profile-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--bgColor-muted, #161b22);
+  border-radius: 50%;
+  color: var(--fgColor-muted, #9198a1);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.github-chat-profile-close:hover {
+  background: var(--bgColor-emphasis, #30363d);
+  color: var(--fgColor-default, #f0f6fc);
+}
+
+.github-chat-profile-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 24px 24px;
+}
+
+.github-chat-profile-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  overflow: hidden;
+  margin-bottom: 16px;
+  border: 3px solid var(--borderColor-muted, #30363d);
+}
+
+.github-chat-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.github-chat-profile-name {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--fgColor-default, #f0f6fc);
+  margin-bottom: 4px;
+}
+
+.github-chat-profile-username {
+  font-size: 14px;
+  color: var(--fgColor-muted, #9198a1);
+  margin-bottom: 24px;
+}
+
+.github-chat-profile-actions {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--borderColor-muted, #30363d);
+  width: 100%;
+  justify-content: center;
+}
+
+.github-chat-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  color: var(--fgColor-muted, #9198a1);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  min-width: 64px;
+}
+
+.github-chat-action-btn:hover:not(:disabled) {
+  background: var(--bgColor-muted, #161b22);
+  color: var(--fgColor-default, #f0f6fc);
+}
+
+.github-chat-action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.github-chat-action-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+.github-chat-action-btn span {
+  font-size: 12px;
+}
+
+.github-chat-profile-menu {
+  width: 100%;
+}
+
+.github-chat-profile-menu .github-chat-menu-item {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 14px 16px;
+  border-radius: 8px;
+  gap: 12px;
+  cursor: pointer;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.github-chat-profile-menu .github-chat-menu-item:hover {
+  background: var(--bgColor-muted, #161b22);
+}
+
+.github-chat-profile-menu .github-chat-menu-unblock {
+  color: #3fb950;
+}
+
+.github-chat-profile-menu .github-chat-menu-unblock:hover {
+  background: rgba(63, 185, 80, 0.1);
+}
+
+.github-chat-profile-menu .github-chat-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.github-chat-profile-menu .github-chat-menu-icon svg {
+  display: block;
+}
+
+/* Block confirmation inline */
+.github-chat-block-confirm {
+  display: none;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.github-chat-confirm-text {
+  font-size: 15px;
+  color: var(--fgColor-default, #f0f6fc);
+  flex: 1;
+}
+
+.github-chat-confirm-yes,
+.github-chat-confirm-no {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.github-chat-confirm-yes {
+  color: #3fb950;
+}
+
+.github-chat-confirm-yes:hover {
+  background: rgba(63, 185, 80, 0.15);
+}
+
+.github-chat-confirm-no {
+  color: var(--fgColor-muted, #9198a1);
+}
+
+.github-chat-confirm-no:hover {
+  background: var(--bgColor-muted, #161b22);
+  color: var(--fgColor-default, #f0f6fc);
+}
+
 /* Back Button */
 .github-chat-back {
   display: flex;
