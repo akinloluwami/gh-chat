@@ -1,0 +1,327 @@
+// Profile sheet modal with block/unblock functionality
+
+import {
+  blockUser,
+  getBlockStatus,
+  setBlockStatusListener,
+  unblockUser
+} from "~lib/api"
+
+// Current state
+let currentBlockedUserId: string | null = null
+let currentBlockStatus: "none" | "blocked_by_me" | "blocked_by_them" = "none"
+let currentUserInfo: {
+  avatar: string
+  displayName: string
+  username: string
+} | null = null
+let modalElement: HTMLElement | null = null
+let currentContainer: HTMLElement | null = null
+
+// Setup menu button handler
+export function setupProfileSheet(
+  container: HTMLElement,
+  otherUserId: string,
+  userInfo?: { avatar: string; displayName: string; username: string }
+): void {
+  currentBlockedUserId = otherUserId
+  currentUserInfo = userInfo || null
+  currentContainer = container
+
+  const menuBtn = container.querySelector("#github-chat-menu-btn")
+  if (!menuBtn) return
+
+  // Open modal on click
+  menuBtn.addEventListener("click", (e) => {
+    e.stopPropagation()
+    showProfileModal(container)
+  })
+
+  // Set up real-time block status listener
+  setBlockStatusListener((blockedBy, status) => {
+    // Only update if it's from the current conversation partner
+    if (blockedBy === currentBlockedUserId && currentContainer) {
+      currentBlockStatus = status
+      updateBlockUI(currentContainer, status)
+      // Close modal if open when we get blocked
+      if (status === "blocked_by_them") {
+        closeModal()
+      }
+    }
+  })
+
+  // Fetch and display initial block status
+  fetchAndDisplayBlockStatus(container, otherUserId)
+}
+
+// Create and show the profile modal
+function showProfileModal(container: HTMLElement): void {
+  // Remove existing modal if any
+  modalElement?.remove()
+
+  const modal = document.createElement("div")
+  modal.className = "github-chat-profile-modal"
+  modal.innerHTML = `
+    <div class="github-chat-profile-overlay"></div>
+    <div class="github-chat-profile-sheet">
+      <div class="github-chat-profile-header">
+        <button class="github-chat-profile-close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6L6 18M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div class="github-chat-profile-content">
+        <div class="github-chat-profile-avatar">
+          <img src="${currentUserInfo?.avatar || ""}" alt="${currentUserInfo?.displayName || "User"}" />
+        </div>
+        <div class="github-chat-profile-name">${currentUserInfo?.displayName || "User"}</div>
+        <div class="github-chat-profile-username">@${currentUserInfo?.username || ""}</div>
+        
+        <div class="github-chat-profile-actions">
+          <button class="github-chat-action-btn" data-action="search" disabled>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <path d="M21 21l-4.35-4.35"/>
+            </svg>
+            <span>Search</span>
+          </button>
+          <button class="github-chat-action-btn" data-action="clear" disabled>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+            </svg>
+            <span>Clear</span>
+          </button>
+          <button class="github-chat-action-btn" data-action="pin" disabled>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 17v5M5 17h14v-1.76a2 2 0 00-1.11-1.79l-1.78-.9A2 2 0 0115 10.76V6h1a2 2 0 000-4H8a2 2 0 000 4h1v4.76a2 2 0 01-1.11 1.79l-1.78.9A2 2 0 005 15.24V17z"/>
+            </svg>
+            <span>Pin</span>
+          </button>
+        </div>
+
+        <div class="github-chat-profile-menu">
+          <div class="github-chat-menu-item" id="github-chat-modal-block">
+            <span class="github-chat-menu-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M4.93 4.93l14.14 14.14"/>
+              </svg>
+            </span>
+            <span class="github-chat-menu-label">Block user</span>
+          </div>
+          
+          <div class="github-chat-block-confirm" id="github-chat-block-confirm" style="display: none;">
+            <span class="github-chat-confirm-text">Block user?</span>
+            <button class="github-chat-confirm-yes" id="github-chat-confirm-block">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+            </button>
+            <button class="github-chat-confirm-no" id="github-chat-confirm-cancel">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `
+
+  container.appendChild(modal)
+  modalElement = modal
+
+  // Update block button state
+  updateModalBlockButton()
+
+  // Close handlers
+  const overlay = modal.querySelector(".github-chat-profile-overlay")
+  const closeBtn = modal.querySelector(".github-chat-profile-close")
+
+  overlay?.addEventListener("click", () => closeModal())
+  closeBtn?.addEventListener("click", () => closeModal())
+
+  // Block button handler - show confirmation or unblock directly
+  const blockBtn = modal.querySelector(
+    "#github-chat-modal-block"
+  ) as HTMLElement
+  const confirmSection = modal.querySelector(
+    "#github-chat-block-confirm"
+  ) as HTMLElement
+  const cancelBtn = modal.querySelector("#github-chat-confirm-cancel")
+  const confirmBlockBtn = modal.querySelector("#github-chat-confirm-block")
+
+  blockBtn?.addEventListener("click", async () => {
+    if (currentBlockStatus === "blocked_by_me") {
+      // Unblock directly
+      await handleUnblock(container)
+      closeModal()
+    } else {
+      // Show confirmation inline with smooth transition
+      if (confirmSection && blockBtn) {
+        blockBtn.style.opacity = "0"
+        setTimeout(() => {
+          blockBtn.style.display = "none"
+          confirmSection.style.display = "flex"
+        }, 150)
+      }
+    }
+  })
+
+  cancelBtn?.addEventListener("click", () => {
+    if (confirmSection && blockBtn) {
+      confirmSection.style.display = "none"
+      blockBtn.style.display = "flex"
+      // Trigger reflow for animation
+      blockBtn.offsetHeight
+      blockBtn.style.opacity = "1"
+    }
+  })
+
+  confirmBlockBtn?.addEventListener("click", async () => {
+    await handleBlock(container)
+    closeModal()
+  })
+
+  // Prevent clicks inside sheet from closing
+  const sheet = modal.querySelector(".github-chat-profile-sheet")
+  sheet?.addEventListener("click", (e) => e.stopPropagation())
+}
+
+// Close the modal
+function closeModal(): void {
+  modalElement?.remove()
+  modalElement = null
+}
+
+// Update block button in modal
+function updateModalBlockButton(): void {
+  if (!modalElement) return
+
+  const blockBtn = modalElement.querySelector("#github-chat-modal-block")
+  if (!blockBtn) return
+
+  const label = blockBtn.querySelector(".github-chat-menu-label")
+  const icon = blockBtn.querySelector(".github-chat-menu-icon")
+
+  if (currentBlockStatus === "blocked_by_me") {
+    if (label) label.textContent = "Unblock user"
+    if (icon)
+      icon.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 6L9 17l-5-5"/>
+      </svg>
+    `
+    blockBtn.classList.add("github-chat-menu-unblock")
+  } else {
+    if (label) label.textContent = "Block user"
+    if (icon)
+      icon.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M4.93 4.93l14.14 14.14"/>
+      </svg>
+    `
+    blockBtn.classList.remove("github-chat-menu-unblock")
+  }
+}
+
+// Fetch and display block status
+async function fetchAndDisplayBlockStatus(
+  container: HTMLElement,
+  otherUserId: string
+): Promise<void> {
+  const status = await getBlockStatus(otherUserId)
+  if (status) {
+    currentBlockStatus = status.status
+    updateBlockUI(container, status.status)
+  }
+}
+
+// Update UI based on block status
+function updateBlockUI(
+  container: HTMLElement,
+  status: "none" | "blocked_by_me" | "blocked_by_them"
+): void {
+  const inputArea = container.querySelector(
+    ".github-chat-input-area"
+  ) as HTMLElement
+
+  // Remove existing banner
+  const existingBanner = container.querySelector(".github-chat-blocked-banner")
+  existingBanner?.remove()
+
+  // Show/hide blocked banner and disable input
+  if (status === "blocked_by_me") {
+    showBlockedBanner(container, "You blocked this user", true)
+    if (inputArea) inputArea.style.display = "none"
+  } else if (status === "blocked_by_them") {
+    showBlockedBanner(container, "You can't reply to this conversation", false)
+    if (inputArea) inputArea.style.display = "none"
+  } else {
+    if (inputArea) inputArea.style.display = ""
+  }
+
+  // Update modal if open
+  updateModalBlockButton()
+}
+
+// Show blocked banner
+function showBlockedBanner(
+  container: HTMLElement,
+  message: string,
+  showUnblockBtn: boolean
+): void {
+  const header = container.querySelector(".github-chat-header")
+  if (!header) return
+
+  const banner = document.createElement("div")
+  banner.className = "github-chat-blocked-banner"
+  banner.innerHTML = `
+    <span>${message}</span>
+    ${showUnblockBtn ? '<button id="github-chat-banner-unblock">Unblock</button>' : ""}
+  `
+
+  header.insertAdjacentElement("afterend", banner)
+
+  // Unblock button in banner
+  const unblockBtn = banner.querySelector("#github-chat-banner-unblock")
+  unblockBtn?.addEventListener("click", () => {
+    if (currentBlockedUserId) {
+      handleUnblock(container)
+    }
+  })
+}
+
+// Handle blocking a user (confirmation is handled in the modal UI)
+async function handleBlock(container: HTMLElement): Promise<void> {
+  if (!currentBlockedUserId) return
+
+  const success = await blockUser(currentBlockedUserId)
+  if (success) {
+    currentBlockStatus = "blocked_by_me"
+    updateBlockUI(container, "blocked_by_me")
+  }
+}
+
+// Handle unblocking a user
+async function handleUnblock(container: HTMLElement): Promise<void> {
+  if (!currentBlockedUserId) return
+
+  const success = await unblockUser(currentBlockedUserId)
+  if (success) {
+    currentBlockStatus = "none"
+    updateBlockUI(container, "none")
+  }
+}
+
+// Cleanup
+export function cleanupProfileSheet(): void {
+  closeModal()
+  setBlockStatusListener(null)
+  currentBlockedUserId = null
+  currentBlockStatus = "none"
+  currentUserInfo = null
+  currentContainer = null
+}
