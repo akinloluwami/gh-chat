@@ -1,6 +1,7 @@
 // Profile page chat button
 
 import { checkAuth, getCurrentUserInfo, openLogin } from "../auth"
+import { openExpandedViewWithUser } from "../expanded-view"
 import {
   getProfileAvatar,
   getProfileDisplayName,
@@ -25,7 +26,6 @@ export async function handleChatClick(): Promise<void> {
     const preferredMode = getPreferredViewMode()
     if (preferredMode === "expanded") {
       // Open expanded view - it will find/create the conversation
-      const { openExpandedViewWithUser } = await import("../expanded-view")
       openExpandedViewWithUser(username, displayName, avatar)
     } else {
       const nav = getNavigationCallbacks()
