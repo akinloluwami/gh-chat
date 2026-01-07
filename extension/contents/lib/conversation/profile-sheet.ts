@@ -11,6 +11,7 @@ import {
 } from "~lib/api"
 
 import { isExpandedViewOpen, loadConversationList } from "../expanded-view"
+import { setChatListCache } from "../state"
 import { escapeHtml } from "../utils"
 
 // Current state
@@ -398,9 +399,17 @@ async function handlePin(): Promise<void> {
   if (success) {
     currentPinStatus = true
     updateModalPinButton()
+    // Invalidate drawer list cache to ensure it refreshes on next open
+    setChatListCache(null)
     // Refresh the conversation list to show the pinned chat at top
     if (isExpandedViewOpen()) {
-      loadConversationList()
+      try {
+        await loadConversationList()
+      } catch (error) {
+        console.error("Failed to refresh conversation list after pinning:", error)
+        // Revert local state if refresh failed to keep UI consistent with server
+        currentPinStatus = false
+      }
     }
   }
 }
@@ -413,9 +422,17 @@ async function handleUnpin(): Promise<void> {
   if (success) {
     currentPinStatus = false
     updateModalPinButton()
+    // Invalidate drawer list cache to ensure it refreshes on next open
+    setChatListCache(null)
     // Refresh the conversation list to update the order
     if (isExpandedViewOpen()) {
-      loadConversationList()
+      try {
+        await loadConversationList()
+      } catch (error) {
+        console.error("Failed to refresh conversation list after unpinning:", error)
+        // Revert local state if refresh failed to keep UI consistent with server
+        currentPinStatus = true
+      }
     }
   }
 }
