@@ -406,9 +406,11 @@ async function handlePin(): Promise<void> {
       try {
         await loadConversationList()
       } catch (error) {
-        console.error("Failed to refresh conversation list after pinning:", error)
-        // Revert local state if refresh failed to keep UI consistent with server
-        currentPinStatus = false
+        // Non-critical: list will refresh on next open since cache is invalidated
+        console.error(
+          "Failed to refresh conversation list after pinning:",
+          error
+        )
       }
     }
   }
@@ -429,9 +431,11 @@ async function handleUnpin(): Promise<void> {
       try {
         await loadConversationList()
       } catch (error) {
-        console.error("Failed to refresh conversation list after unpinning:", error)
-        // Revert local state if refresh failed to keep UI consistent with server
-        currentPinStatus = true
+        // Non-critical: list will refresh on next open since cache is invalidated
+        console.error(
+          "Failed to refresh conversation list after unpinning:",
+          error
+        )
       }
     }
   }
