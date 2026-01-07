@@ -131,17 +131,44 @@ auth.get("/github/callback", async (c) => {
       login: string;
       name?: string;
       avatar_url?: string;
+      email?: string;
     };
+
+    // Get user's primary email from GitHub (if not available in user data)
+    let userEmail: string | null = userData.email || null;
+    if (!userEmail) {
+      const emailResponse = await fetch("https://api.github.com/user/emails", {
+        headers: {
+          Authorization: `Bearer ${tokenData.access_token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      });
+
+      if (emailResponse.ok) {
+        const emails = (await emailResponse.json()) as Array<{
+          email: string;
+          primary: boolean;
+          verified: boolean;
+        }>;
+        // Find the primary verified email, or fall back to any verified email
+        const primaryEmail = emails.find((e) => e.primary && e.verified);
+        const verifiedEmail = emails.find((e) => e.verified);
+        userEmail = primaryEmail?.email || verifiedEmail?.email || null;
+      }
+    }
 
     // Upsert user in database
     const [user] = await sql`
-      INSERT INTO users (github_id, username, display_name, avatar_url, access_token, has_account, updated_at)
+      INSERT INTO users (github_id, username, display_name, email, avatar_url, access_token, has_account, updated_at)
       VALUES (${userData.id}, ${userData.login}, ${
       userData.name || userData.login
-    }, ${userData.avatar_url || ""}, ${tokenData.access_token}, TRUE, NOW())
+    }, ${userEmail || null}, ${userData.avatar_url || ""}, ${
+      tokenData.access_token
+    }, TRUE, NOW())
       ON CONFLICT (github_id) DO UPDATE SET
         username = EXCLUDED.username,
         display_name = EXCLUDED.display_name,
+        email = COALESCE(EXCLUDED.email, users.email),
         avatar_url = EXCLUDED.avatar_url,
         access_token = EXCLUDED.access_token,
         has_account = TRUE,
@@ -219,5 +246,84 @@ auth.post("/logout", async (c) => {
 
   return c.json({ success: true });
 });
+
+// Backfill emails for existing users who don't have one
+// This is idempotent - it only processes users without an email
+export async function backfillUserEmails(): Promise<void> {
+  console.log("[Backfill] Starting email backfill for existing users...");
+
+  // Get users without email who have an access token
+  const usersWithoutEmail = await sql`
+    SELECT id, username, access_token 
+    FROM users 
+    WHERE email IS NULL AND access_token IS NOT NULL
+  `;
+
+  if (usersWithoutEmail.length === 0) {
+    console.log("[Backfill] No users need email backfill");
+    return;
+  }
+
+  console.log(
+    `[Backfill] Found ${usersWithoutEmail.length} users without email`,
+  );
+
+  let successCount = 0;
+  let failCount = 0;
+
+  for (const user of usersWithoutEmail) {
+    try {
+      // Try to get email from GitHub API
+      const emailResponse = await fetch("https://api.github.com/user/emails", {
+        headers: {
+          Authorization: `Bearer ${user.access_token}`,
+          Accept: "application/vnd.github.v3+json",
+        },
+      });
+
+      if (!emailResponse.ok) {
+        // Token might be expired or revoked
+        console.log(
+          `[Backfill] Failed to fetch email for ${user.username}: ${emailResponse.status}`,
+        );
+        failCount++;
+        continue;
+      }
+
+      const emails = (await emailResponse.json()) as Array<{
+        email: string;
+        primary: boolean;
+        verified: boolean;
+      }>;
+
+      // Find the primary verified email, or fall back to any verified email
+      const primaryEmail = emails.find((e) => e.primary && e.verified);
+      const verifiedEmail = emails.find((e) => e.verified);
+      const userEmail = primaryEmail?.email || verifiedEmail?.email || null;
+
+      if (userEmail) {
+        await sql`
+          UPDATE users SET email = ${userEmail}, updated_at = NOW()
+          WHERE id = ${user.id} AND email IS NULL
+        `;
+        console.log(`[Backfill] Updated email for ${user.username}`);
+        successCount++;
+      } else {
+        console.log(`[Backfill] No verified email found for ${user.username}`);
+        failCount++;
+      }
+
+      // Add a small delay to avoid rate limiting
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error(`[Backfill] Error processing ${user.username}:`, error);
+      failCount++;
+    }
+  }
+
+  console.log(
+    `[Backfill] Complete. Success: ${successCount}, Failed: ${failCount}`,
+  );
+}
 
 export default auth;
