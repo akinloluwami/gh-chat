@@ -11,6 +11,7 @@ import {
 } from "~lib/api"
 
 import { isExpandedViewOpen, loadConversationList } from "../expanded-view"
+import { setChatListCache } from "../state"
 import { escapeHtml } from "../utils"
 
 // Current state
@@ -372,6 +373,8 @@ async function handlePin(): Promise<void> {
   const success = await pinConversation(currentConversationId)
   if (success) {
     currentPinStatus = true
+    // Invalidate drawer list cache to ensure it refreshes on next open
+    setChatListCache(null)
     // Refresh the conversation list to show the pinned chat at top
     if (isExpandedViewOpen()) {
       loadConversationList()
@@ -386,6 +389,8 @@ async function handleUnpin(): Promise<void> {
   const success = await unpinConversation(currentConversationId)
   if (success) {
     currentPinStatus = false
+    // Invalidate drawer list cache to ensure it refreshes on next open
+    setChatListCache(null)
     // Refresh the conversation list to update the order
     if (isExpandedViewOpen()) {
       loadConversationList()
