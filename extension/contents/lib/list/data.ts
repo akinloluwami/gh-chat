@@ -42,7 +42,8 @@ export async function getAllChats(): Promise<ChatPreview[]> {
     unread: conv.unread_count > 0,
     unreadCount: conv.unread_count,
     hasAccount: conv.other_has_account,
-    conversationId: conv.id
+    conversationId: conv.id,
+    isPinned: conv.is_pinned
   }))
 
   // Update cache
