@@ -18,6 +18,7 @@ let currentBlockedUserId: string | null = null
 let currentConversationId: string | null = null
 let currentBlockStatus: "none" | "blocked_by_me" | "blocked_by_them" = "none"
 let currentPinStatus: boolean = false
+let isPinStatusLoading: boolean = true
 let currentUserInfo: {
   avatar: string
   displayName: string
@@ -37,6 +38,7 @@ export function setupProfileSheet(
   currentConversationId = conversationId
   currentUserInfo = userInfo || null
   currentContainer = container
+  isPinStatusLoading = true
 
   const menuBtn = container.querySelector("#github-chat-menu-btn")
   if (!menuBtn) return
@@ -241,11 +243,26 @@ function updateModalBlockButton(): void {
 function updateModalPinButton(): void {
   if (!modalElement) return
 
-  const pinBtn = modalElement.querySelector("#github-chat-pin-btn")
+  const pinBtn = modalElement.querySelector(
+    "#github-chat-pin-btn"
+  ) as HTMLButtonElement
   if (!pinBtn) return
 
   const label = pinBtn.querySelector("span")
   const icon = pinBtn.querySelector("svg")
+
+  // Disable button while loading
+  if (isPinStatusLoading) {
+    pinBtn.disabled = true
+    pinBtn.style.opacity = "0.5"
+    pinBtn.style.cursor = "not-allowed"
+    return
+  }
+
+  // Enable button when loaded
+  pinBtn.disabled = false
+  pinBtn.style.opacity = ""
+  pinBtn.style.cursor = ""
 
   if (currentPinStatus) {
     if (label) label.textContent = "Unpin"
@@ -269,11 +286,16 @@ function updateModalPinButton(): void {
 
 // Fetch and display pin status
 async function fetchAndDisplayPinStatus(conversationId: string): Promise<void> {
+  isPinStatusLoading = true
+  updateModalPinButton()
+
   const status = await getPinStatus(conversationId)
   if (status) {
     currentPinStatus = status.pinned
-    updateModalPinButton()
   }
+
+  isPinStatusLoading = false
+  updateModalPinButton()
 }
 
 // Fetch and display block status
@@ -401,6 +423,7 @@ export function cleanupProfileSheet(): void {
   currentConversationId = null
   currentBlockStatus = "none"
   currentPinStatus = false
+  isPinStatusLoading = true
   currentUserInfo = null
   currentContainer = null
 }
