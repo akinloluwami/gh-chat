@@ -10,6 +10,7 @@ import {
   unpinConversation
 } from "~lib/api"
 
+import { isExpandedViewOpen, loadConversationList } from "../expanded-view"
 import { escapeHtml } from "../utils"
 
 // Current state
@@ -371,6 +372,10 @@ async function handlePin(): Promise<void> {
   const success = await pinConversation(currentConversationId)
   if (success) {
     currentPinStatus = true
+    // Refresh the conversation list to show the pinned chat at top
+    if (isExpandedViewOpen()) {
+      loadConversationList()
+    }
   }
 }
 
@@ -381,6 +386,10 @@ async function handleUnpin(): Promise<void> {
   const success = await unpinConversation(currentConversationId)
   if (success) {
     currentPinStatus = false
+    // Refresh the conversation list to update the order
+    if (isExpandedViewOpen()) {
+      loadConversationList()
+    }
   }
 }
 
