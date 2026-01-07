@@ -294,7 +294,7 @@ async function setupAllHandlers(
   fetchAndDisplayStatus(container, otherUserId)
 
   // Setup profile sheet modal
-  setupProfileSheet(container, otherUserId, otherUserInfo)
+  setupProfileSheet(container, otherUserId, conversationId, otherUserInfo)
 
   input?.focus()
 }
