@@ -312,7 +312,8 @@ export async function getPinStatus(
     const response = await fetchWithAuth(`/conversations/${conversationId}/pin`)
     if (!response.ok) return null
     return await response.json()
-  } catch {
+  } catch (error) {
+    console.error("Failed to get pin status for conversation:", conversationId, error)
     return null
   }
 }
