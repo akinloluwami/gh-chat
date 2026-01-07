@@ -106,6 +106,8 @@ export interface Conversation {
   last_message_time: string | null
   unread_count: number
   block_status: "none" | "blocked_by_me" | "blocked_by_them"
+  is_pinned: boolean
+  pinned_at: string | null
 }
 
 export interface Reaction {
@@ -259,6 +261,60 @@ export async function getBlockedUsers(): Promise<BlockedUser[]> {
     return data.blocked_users || []
   } catch {
     return []
+  }
+}
+
+// ============= Pin Conversation API =============
+
+export interface PinStatus {
+  pinned: boolean
+  pinned_at: string | null
+}
+
+// Pin a conversation
+export async function pinConversation(
+  conversationId: string
+): Promise<boolean> {
+  try {
+    const response = await fetchWithAuth(
+      `/conversations/${conversationId}/pin`,
+      {
+        method: "POST"
+      }
+    )
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+// Unpin a conversation
+export async function unpinConversation(
+  conversationId: string
+): Promise<boolean> {
+  try {
+    const response = await fetchWithAuth(
+      `/conversations/${conversationId}/pin`,
+      {
+        method: "DELETE"
+      }
+    )
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+// Get pin status for a conversation
+export async function getPinStatus(
+  conversationId: string
+): Promise<PinStatus | null> {
+  try {
+    const response = await fetchWithAuth(`/conversations/${conversationId}/pin`)
+    if (!response.ok) return null
+    return await response.json()
+  } catch {
+    return null
   }
 }
 
