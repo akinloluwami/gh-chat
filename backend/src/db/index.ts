@@ -26,12 +26,26 @@ export async function initDb() {
       github_id INTEGER UNIQUE NOT NULL,
       username VARCHAR(255) UNIQUE NOT NULL,
       display_name VARCHAR(255),
+      email VARCHAR(255),
       avatar_url TEXT,
       access_token TEXT,
       has_account BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
     )
+  `;
+
+  // Add email column if it doesn't exist (for existing databases)
+  await sql`
+    DO $$ 
+    BEGIN 
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name = 'email'
+      ) THEN 
+        ALTER TABLE users ADD COLUMN email VARCHAR(255);
+      END IF;
+    END $$;
   `;
 
   // Create sessions table
