@@ -21,7 +21,6 @@ import {
   setCurrentView
 } from "../state"
 import { setupMessageActionHandlers } from "./action-handler"
-import { setupBlockHandlers } from "./block-handler"
 import { setupInputHandlers } from "./input-handler"
 import {
   generateConversationErrorHTML,
@@ -34,6 +33,7 @@ import {
   refreshCacheInBackground
 } from "./message-fetcher"
 import { setupNavigationButtons } from "./navigation"
+import { setupProfileSheet } from "./profile-sheet"
 import { setupInfiniteScroll } from "./scroll-handler"
 import { fetchAndDisplayStatus, stopStatusPolling } from "./status-handler"
 import { setupWebSocketHandler } from "./websocket-handler"
@@ -152,7 +152,8 @@ export async function renderConversationViewInto(
     conversation.other_user.id,
     userId,
     hasMoreMessages,
-    unreadMessageIds
+    unreadMessageIds,
+    { avatar, displayName, username }
   )
 }
 
@@ -238,7 +239,8 @@ async function setupAllHandlers(
   otherUserId: string,
   userId: string | null,
   hasMoreMessages: boolean,
-  unreadMessageIds: string[]
+  unreadMessageIds: string[],
+  otherUserInfo?: { avatar: string; displayName: string; username: string }
 ): Promise<void> {
   const input = container.querySelector(
     "#github-chat-input"
@@ -291,8 +293,8 @@ async function setupAllHandlers(
   // Fetch and display user online status
   fetchAndDisplayStatus(container, otherUserId)
 
-  // Setup block/unblock menu handlers
-  setupBlockHandlers(container, otherUserId)
+  // Setup profile sheet modal
+  setupProfileSheet(container, otherUserId, otherUserInfo)
 
   input?.focus()
 }
@@ -378,6 +380,11 @@ export async function renderConversationView(
     otherUserId,
     userId,
     hasMoreMessages,
-    unreadMessageIds
+    unreadMessageIds,
+    {
+      avatar: otherAvatar,
+      displayName: otherDisplayName,
+      username: otherUsername
+    }
   )
 }
