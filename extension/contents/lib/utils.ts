@@ -1,5 +1,9 @@
 // Utility functions for the chat extension
 
+// Pin indicator HTML for conversation lists
+export const PIN_INDICATOR_HTML =
+  '<span class="github-chat-pin-indicator" title="Pinned"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5M5 17h14v-1.76a2 2 0 00-1.11-1.79l-1.78-.9A2 2 0 0115 10.76V6h1a2 2 0 000-4H8a2 2 0 000 4h1v4.76a2 2 0 01-1.11 1.79l-1.78.9A2 2 0 005 15.24V17z"/></svg></span>'
+
 // Escape HTML to prevent XSS
 export function escapeHtml(text: string): string {
   const div = document.createElement("div")
