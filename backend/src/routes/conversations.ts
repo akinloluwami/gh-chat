@@ -2,6 +2,16 @@ import { Hono } from "hono";
 import { sql } from "../db/index.js";
 import { broadcastToConversation, broadcastToUser } from "../websocket.js";
 import { isBlocked } from "./users.js";
+import {
+  trackMessageSent,
+  trackConversationStarted,
+  trackReactionAdded,
+  trackReactionRemoved,
+  trackConversationPinned,
+  trackConversationUnpinned,
+  trackMessageEdited,
+  trackMessageDeleted,
+} from "../posthog.js";
 
 interface AuthUser {
   user_id: string;
@@ -309,6 +319,13 @@ conversations.post("/with/:username", async (c) => {
       conversation = newConvs[0];
       conversationCreated = true;
       console.log(`[CONV] New conversation created: ${conversation.id}`);
+
+      // Track conversation started
+      trackConversationStarted(user.user_id, {
+        conversation_id: conversation.id,
+        with_user_id: targetUser.id,
+        with_username: targetUser.username,
+      });
     }
 
     console.log(`[CONV] Success! Returning conversation ${conversation.id}`);
@@ -515,6 +532,13 @@ conversations.post("/:id/messages", async (c) => {
     RETURNING id, content, created_at, sender_id, reply_to_id
   `;
 
+  // Track message sent
+  trackMessageSent(user.user_id, {
+    conversation_id: conversationId,
+    has_reply: !!replyToId,
+    message_length: content.length,
+  });
+
   // Update conversation updated_at
   await sql`
     UPDATE conversations SET updated_at = NOW() WHERE id = ${conversationId}::uuid
@@ -631,6 +655,13 @@ conversations.patch("/:id/messages/:messageId", async (c) => {
 
   const updatedMessage = updated[0];
 
+  // Track message edited
+  trackMessageEdited(user.user_id, {
+    conversation_id: conversationId,
+    message_id: messageId,
+    new_message_length: content.length,
+  });
+
   // Broadcast the edit to all users in the conversation
   broadcastToConversation(conversationId, {
     type: "message_edited",
@@ -683,6 +714,12 @@ conversations.delete("/:id/messages/:messageId", async (c) => {
     SET deleted_at = NOW()
     WHERE id = ${messageId}::uuid
   `;
+
+  // Track message deleted
+  trackMessageDeleted(user.user_id, {
+    conversation_id: conversationId,
+    message_id: messageId,
+  });
 
   // Broadcast the deletion to all users in the conversation
   broadcastToConversation(conversationId, {
@@ -761,6 +798,13 @@ conversations.post("/:id/messages/:messageId/reactions", async (c) => {
       VALUES (${messageId}::uuid, ${user.user_id}, ${emoji})
       ON CONFLICT (message_id, user_id, emoji) DO NOTHING
     `;
+
+    // Track reaction added
+    trackReactionAdded(user.user_id, {
+      conversation_id: conversationId,
+      message_id: messageId,
+      emoji,
+    });
   } catch (error) {
     console.error("Failed to add reaction:", error);
     return c.json({ error: "Failed to add reaction" }, 500);
@@ -825,6 +869,13 @@ conversations.delete("/:id/messages/:messageId/reactions/:emoji", async (c) => {
   if (deleted.length === 0) {
     return c.json({ error: "Reaction not found" }, 404);
   }
+
+  // Track reaction removed
+  trackReactionRemoved(user.user_id, {
+    conversation_id: conversationId,
+    message_id: messageId,
+    emoji,
+  });
 
   const conversation = convCheck[0];
   const otherUserId =
@@ -904,6 +955,11 @@ conversations.post("/:conversationId/pin", async (c) => {
     VALUES (${user.user_id}, ${conversationId}::uuid)
   `;
 
+  // Track conversation pinned
+  trackConversationPinned(user.user_id, {
+    conversation_id: conversationId,
+  });
+
   return c.json({ success: true, pinned: true });
 });
 
@@ -924,10 +980,18 @@ conversations.delete("/:conversationId/pin", async (c) => {
   }
 
   // Delete the pin
-  await sql`
+  const deleted = await sql`
     DELETE FROM pinned_conversations 
     WHERE user_id = ${user.user_id} AND conversation_id = ${conversationId}::uuid
+    RETURNING id
   `;
+
+  // Track conversation unpinned (only if it was actually pinned)
+  if (deleted.length > 0) {
+    trackConversationUnpinned(user.user_id, {
+      conversation_id: conversationId,
+    });
+  }
 
   return c.json({ success: true, pinned: false });
 });

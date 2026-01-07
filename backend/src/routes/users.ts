@@ -3,6 +3,7 @@ import { sql } from "../db/index.js";
 import { getUserStatus } from "../redis.js";
 import { broadcastToUser } from "../websocket.js";
 import { broadcastStatusHidden, broadcastUserStatus } from "../websocket.js";
+import { trackUserBlocked, trackUserUnblocked } from "../posthog.js";
 
 interface AuthUser {
   user_id: string;
@@ -215,6 +216,11 @@ users.post("/:userId/block", async (c) => {
       ON CONFLICT (blocker_id, blocked_id) DO NOTHING
     `;
 
+    // Track user blocked
+    trackUserBlocked(currentUser.user_id, {
+      blocked_user_id: targetUserId,
+    });
+
     // Notify the blocked user in real-time
     await broadcastToUser(targetUserId, {
       type: "block_status_changed",
@@ -235,11 +241,19 @@ users.delete("/:userId/block", async (c) => {
   const targetUserId = c.req.param("userId");
 
   try {
-    await sql`
+    const deleted = await sql`
       DELETE FROM blocks 
       WHERE blocker_id = ${currentUser.user_id}::uuid 
         AND blocked_id = ${targetUserId}::uuid
+      RETURNING id
     `;
+
+    // Track user unblocked (only if they were actually blocked)
+    if (deleted.length > 0) {
+      trackUserUnblocked(currentUser.user_id, {
+        unblocked_user_id: targetUserId,
+      });
+    }
 
     // Notify the unblocked user in real-time
     await broadcastToUser(targetUserId, {

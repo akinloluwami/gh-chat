@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { sql } from "../db/index.js";
 import * as jose from "jose";
+import { trackUserSignup, trackUserLogin } from "../posthog.js";
 import "dotenv/config";
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
@@ -157,6 +158,12 @@ auth.get("/github/callback", async (c) => {
       }
     }
 
+    // Check if user already exists
+    const existingUser = await sql`
+      SELECT id FROM users WHERE github_id = ${userData.id}
+    `;
+    const isNewUser = existingUser.length === 0;
+
     // Upsert user in database
     const [user] = await sql`
       INSERT INTO users (github_id, username, display_name, email, avatar_url, access_token, has_account, updated_at)
@@ -175,6 +182,26 @@ auth.get("/github/callback", async (c) => {
         updated_at = NOW()
       RETURNING id, username, display_name, avatar_url
     `;
+
+    // Track user signup or login
+    if (isNewUser) {
+      trackUserSignup(user.id, {
+        username: user.username,
+        display_name: user.display_name,
+        github_id: userData.id,
+        email: userEmail || undefined,
+        avatar_url: user.avatar_url,
+        login_type: "github",
+      });
+    } else {
+      trackUserLogin(user.id, {
+        username: user.username,
+        display_name: user.display_name,
+        github_id: userData.id,
+        email: userEmail || undefined,
+        avatar_url: user.avatar_url,
+      });
+    }
 
     // Generate session token
     const sessionToken = await generateSessionToken(user.id);

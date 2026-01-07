@@ -6,6 +6,7 @@ import auth, { backfillUserEmails } from "./routes/auth.js";
 import conversations from "./routes/conversations.js";
 import users from "./routes/users.js";
 import { createWebSocketServer } from "./websocket.js";
+import { shutdownPostHog } from "./posthog.js";
 import "dotenv/config";
 import type { Server } from "http";
 
@@ -87,6 +88,16 @@ async function main() {
 
   // Attach WebSocket server to the same HTTP server
   createWebSocketServer(server);
+
+  // Graceful shutdown handler
+  const shutdown = async () => {
+    console.log("Shutting down gracefully...");
+    await shutdownPostHog();
+    process.exit(0);
+  };
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
 }
 
 main();
