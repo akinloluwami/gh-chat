@@ -271,5 +271,19 @@ export async function initDb() {
   await sql`CREATE INDEX IF NOT EXISTS idx_blocks_blocker ON blocks(blocker_id)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_blocks_blocked ON blocks(blocked_id)`;
 
+  // Create pinned_conversations table (stores user's pinned conversations)
+  await sql`
+    CREATE TABLE IF NOT EXISTS pinned_conversations (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+      pinned_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(user_id, conversation_id)
+    )
+  `;
+
+  await sql`CREATE INDEX IF NOT EXISTS idx_pinned_conversations_user ON pinned_conversations(user_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_pinned_conversations_conversation ON pinned_conversations(conversation_id)`;
+
   console.log("Database tables initialized with UUID primary keys");
 }
