@@ -296,10 +296,10 @@ async function fetchAndDisplayPinStatus(conversationId: string): Promise<void> {
   const status = await getPinStatus(conversationId)
   if (status) {
     currentPinStatus = status.pinned
+    isPinStatusLoading = false
+    updateModalPinButton()
+    return
   }
-
-  isPinStatusLoading = false
-  updateModalPinButton()
 }
 
 // Fetch and display block status
