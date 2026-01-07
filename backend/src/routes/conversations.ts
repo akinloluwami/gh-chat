@@ -128,8 +128,8 @@ conversations.get("/", async (c) => {
     JOIN users u2 ON c.user2_id = u2.id
     WHERE c.user1_id = ${user.user_id} OR c.user2_id = ${user.user_id}
     ORDER BY 
-      (SELECT EXISTS (SELECT 1 FROM pinned_conversations WHERE user_id = ${user.user_id} AND conversation_id = c.id)) DESC,
-      (SELECT pinned_at FROM pinned_conversations WHERE user_id = ${user.user_id} AND conversation_id = c.id) DESC NULLS LAST,
+      is_pinned DESC,
+      pinned_at DESC NULLS LAST,
       c.updated_at DESC
   `;
 
