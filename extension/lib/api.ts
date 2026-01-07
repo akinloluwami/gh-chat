@@ -106,7 +106,6 @@ export interface Conversation {
   last_message_time: string | null
   unread_count: number
   block_status: "none" | "blocked_by_me" | "blocked_by_them"
-  is_pinned: boolean
   pinned_at: string | null
 }
 
