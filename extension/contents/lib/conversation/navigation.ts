@@ -1,5 +1,6 @@
 // Navigation button handlers for conversation view
 
+import { openExpandedView } from "../expanded-view"
 import { getCurrentConversationId, getNavigationCallbacks } from "../state"
 
 // Setup back and close button listeners
@@ -17,7 +18,7 @@ export function setupNavigationButtons(container: HTMLElement): void {
   })
 
   const expandBtn = container.querySelector(".github-chat-expand")
-  expandBtn?.addEventListener("click", async () => {
+  expandBtn?.addEventListener("click", () => {
     // Capture the conversation ID BEFORE closing the drawer (which clears it)
     const conversationId = getCurrentConversationId()
 
@@ -26,7 +27,6 @@ export function setupNavigationButtons(container: HTMLElement): void {
     nav?.closeChatDrawer()
 
     // Open expanded view with current conversation
-    const { openExpandedView } = await import("../expanded-view")
     openExpandedView(conversationId || undefined)
   })
 }
