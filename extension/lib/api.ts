@@ -270,10 +270,15 @@ export interface PinStatus {
   pinned_at: string | null
 }
 
+export interface PinResult {
+  success: boolean
+  error?: string
+}
+
 // Pin a conversation
 export async function pinConversation(
   conversationId: string
-): Promise<boolean> {
+): Promise<PinResult> {
   try {
     const response = await fetchWithAuth(
       `/conversations/${conversationId}/pin`,
@@ -281,10 +286,17 @@ export async function pinConversation(
         method: "POST"
       }
     )
-    return response.ok
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      return {
+        success: false,
+        error: data.error || "Failed to pin conversation"
+      }
+    }
+    return { success: true }
   } catch (error) {
     console.error("Failed to pin conversation:", conversationId, error)
-    return false
+    return { success: false, error: "Failed to pin conversation" }
   }
 }
 
@@ -315,7 +327,11 @@ export async function getPinStatus(
     if (!response.ok) return null
     return await response.json()
   } catch (error) {
-    console.error("Failed to get pin status for conversation:", conversationId, error)
+    console.error(
+      "Failed to get pin status for conversation:",
+      conversationId,
+      error
+    )
     return null
   }
 }
