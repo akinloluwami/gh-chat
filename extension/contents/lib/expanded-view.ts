@@ -364,14 +364,14 @@ function renderConversationList(conversations: Conversation[]): void {
       const isSelected = conv.id === selectedConversationId
       const unreadClass = conv.unread_count > 0 ? "unread" : ""
       const selectedClass = isSelected ? "selected" : ""
-      const pinnedClass = conv.is_pinned ? "pinned" : ""
+      const pinnedClass = conv.pinned_at ? "pinned" : ""
       const lastMessageTime = conv.last_message_time
         ? formatRelativeTime(new Date(conv.last_message_time).getTime())
         : ""
       const notOnPlatformBadge = !conv.other_has_account
         ? '<span class="github-chat-not-on-platform-badge" title="Not on GH Chat yet">!</span>'
         : ""
-      const pinIndicator = conv.is_pinned
+      const pinIndicator = conv.pinned_at
         ? '<span class="github-chat-pin-indicator" title="Pinned"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5M5 17h14v-1.76a2 2 0 00-1.11-1.79l-1.78-.9A2 2 0 0115 10.76V6h1a2 2 0 000-4H8a2 2 0 000 4h1v4.76a2 2 0 01-1.11 1.79l-1.78.9A2 2 0 005 15.24V17z"/></svg></span>'
         : ""
 
