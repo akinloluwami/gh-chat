@@ -17,8 +17,8 @@ function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-white">
-      <div className="flex flex-col items-center justify-center min-h-screen px-6">
+    <div className="min-h-screen bg-[#0d1117] text-white p-5">
+      <div className="flex flex-col items-center justify-center px-6">
         <img src="/logo.png" alt="" className="w-40 mb-5" />
 
         <h1 className="text-4xl md:text-5xl font-bold text-center mb-4">
@@ -30,11 +30,11 @@ function LandingPage() {
           their profile.
         </p>
 
-        <div className="flex gap-4">
+        <div className="flex flex-wrap justify-center gap-4">
           <a
             href="https://chromewebstore.google.com/detail/lpccimcjmaaenlgckbafegoiekccejnj?utm_source=gh_chat_landing_page"
             onClick={handleInstallClick}
-            className="inline-flex items-center gap-2 px-8 py-3 bg-[#238636] hover:bg-[#2ea043] text-white font-semibold rounded-sm transition-colors text-lg"
+            className="flex-1 min-w-[200px] max-w-xs flex items-center justify-center gap-2 px-8 py-3 bg-[#238636] hover:bg-[#2ea043] text-white font-semibold rounded-sm transition-colors text-lg whitespace-nowrap"
             target="_blank"
           >
             <svg
@@ -52,7 +52,7 @@ function LandingPage() {
           <a
             href="https://github.com/akinloluwami/gh-chat"
             onClick={handleStarClick}
-            className="inline-flex items-center gap-2 px-8 py-3 bg-[#21262d] hover:bg-[#30363d] text-white font-semibold rounded-sm transition-colors text-lg"
+            className="flex-1 min-w-[200px] max-w-xs flex items-center justify-center gap-2 px-8 py-3 bg-[#21262d] hover:bg-[#30363d] text-white font-semibold rounded-sm transition-colors text-lg whitespace-nowrap"
             target="_blank"
           >
             <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -60,11 +60,10 @@ function LandingPage() {
             </svg>
             Star on GitHub
           </a>
-
         </div>
 
 
-        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl">
+        <div className="mt-16 flex flex-wrap justify-center gap-6 max-w-5xl">
           <div className="text-center">
             <div className="w-12 h-12 bg-[#161b22] border border-[#3d444d] rounded-lg flex items-center justify-center mx-auto mb-3">
               <svg
@@ -109,7 +108,7 @@ function LandingPage() {
             </p>
           </div>
 
-          <div className="text-center">
+          <div className="text-center w-full sm:w-1/2 md:w-1/3 lg:w-1/4">
             <div className="w-12 h-12 bg-[#161b22] border border-[#3d444d] rounded-lg flex items-center justify-center mx-auto mb-3">
               <svg
                 className="w-6 h-6 text-[#238636]"
