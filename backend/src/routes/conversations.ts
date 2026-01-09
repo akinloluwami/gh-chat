@@ -195,14 +195,19 @@ conversations.post("/with/:username", async (c) => {
         `[CONV] User not in DB, fetching from GitHub API: ${targetUsername}`,
       );
       try {
+        const headers: Record<string, string> = {
+          Accept: "application/vnd.github.v3+json",
+          "User-Agent": "GitHub-Chat-App",
+        };
+
+        // Use GitHub token if available for higher rate limits
+        if (process.env.GITHUB_TOKEN) {
+          headers["Authorization"] = `Bearer ${process.env.GITHUB_TOKEN}`;
+        }
+
         const githubResponse = await fetch(
           `https://api.github.com/users/${targetUsername}`,
-          {
-            headers: {
-              Accept: "application/vnd.github.v3+json",
-              "User-Agent": "GitHub-Chat-App",
-            },
-          },
+          { headers },
         );
 
         console.log(
@@ -212,7 +217,19 @@ conversations.post("/with/:username", async (c) => {
         if (!githubResponse.ok) {
           const errorText = await githubResponse.text();
           console.log(`[CONV] GitHub API error: ${errorText}`);
-          return c.json({ error: "GitHub user not found" }, 404);
+
+          if (githubResponse.status === 404) {
+            return c.json({ error: "GitHub user not found" }, 404);
+          } else if (githubResponse.status === 403) {
+            return c.json(
+              {
+                error:
+                  "GitHub API rate limit exceeded. Please try again later.",
+              },
+              429,
+            );
+          }
+          return c.json({ error: "Failed to fetch GitHub user" }, 500);
         }
 
         const githubUser = (await githubResponse.json()) as {
