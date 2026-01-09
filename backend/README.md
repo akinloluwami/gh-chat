@@ -25,6 +25,20 @@ docker run -d \
   postgres:16
 ```
 
+### Disable SSL for Local Postgres
+
+When running Postgres locally (e.g. via Docker), SSL is usually not enabled.
+Set `ssl` to `false` in the postgres client configuration.
+
+```ts
+export const sql = postgres(connectionString, {
+  ssl: false, // Make it false here
+  max: 10,
+  idle_timeout: 20,
+  connect_timeout: 10,
+});
+
+
 ### Redis
 
 ```bash
